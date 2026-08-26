@@ -1,0 +1,631 @@
+warning: in the working copy of 'backend/app/core/config.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/app/main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/requirements.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/backend/app/core/config.py b/backend/app/core/config.py[m
+[1mindex ae8aadc..b4f59ce 100644[m
+[1m--- a/backend/app/core/config.py[m
+[1m+++ b/backend/app/core/config.py[m
+[36m@@ -8,7 +8,10 @@[m [mclass Settings(BaseSettings):[m
+     ENVIRONMENT: str = "development"[m
+     PORT: int = 8000[m
+     [m
+[32m+[m[32m    GEMINI_API_KEY: Optional[str] = None[m
+[32m+[m[32m    GEMINI_MODEL: str = "gemini-2.5-flash"[m
+     OPENAI_API_KEY: Optional[str] = None[m
+[32m+[m[32m    OPENAI_MODEL: str = "gpt-4o-mini"[m
+     DATABASE_URL: Optional[str] = None[m
+ [m
+     model_config = SettingsConfigDict([m
+[1mdiff --git a/backend/app/main.py b/backend/app/main.py[m
+[1mindex 67ae201..f93fc6b 100644[m
+[1m--- a/backend/app/main.py[m
+[1m+++ b/backend/app/main.py[m
+[36m@@ -1,7 +1,7 @@[m
+ from fastapi import FastAPI[m
+ from fastapi.middleware.cors import CORSMiddleware[m
+ from app.core.config import settings[m
+[31m-from app.api import health[m
+[32m+[m[32mfrom app.api import health, resume, jd[m
+ [m
+ app = FastAPI([m
+     title=settings.PROJECT_NAME,[m
+[36m@@ -19,6 +19,8 @@[m [mapp.add_middleware([m
+ [m
+ # Include API routers[m
+ app.include_router(health.router, prefix=settings.API_V1_STR, tags=["health"])[m
+[32m+[m[32mapp.include_router(resume.router, prefix=settings.API_V1_STR, tags=["resume"])[m
+[32m+[m[32mapp.include_router(jd.router, prefix=settings.API_V1_STR, tags=["jd"])[m
+ [m
+ [m
+ @app.get("/")[m
+[1mdiff --git a/backend/requirements.txt b/backend/requirements.txt[m
+[1mindex f96bd12..496edf4 100644[m
+[1m--- a/backend/requirements.txt[m
+[1m+++ b/backend/requirements.txt[m
+[36m@@ -6,3 +6,7 @@[m [mpython-dotenv>=1.0.1[m
+ httpx>=0.27.0[m
+ pytest>=8.0.0[m
+ pytest-asyncio>=0.23.5[m
+[32m+[m[32mPyMuPDF>=1.23.0[m
+[32m+[m[32mpython-multipart>=0.0.9[m
+[32m+[m[32mgoogle-genai>=1.0.0[m
+[41m+[m
+[1mdiff --git a/frontend/src/App.tsx b/frontend/src/App.tsx[m
+[1mindex f761888..291130e 100644[m
+[1m--- a/frontend/src/App.tsx[m
+[1m+++ b/frontend/src/App.tsx[m
+[36m@@ -9,14 +9,71 @@[m [mimport {[m
+   ShieldCheck, [m
+   Cpu, [m
+   Target, [m
+[31m-  ArrowRight[m
+[32m+[m[32m  ArrowRight,[m
+[32m+[m[32m  ChevronDown,[m
+[32m+[m[32m  ChevronUp,[m
+[32m+[m[32m  Loader2,[m
+[32m+[m[32m  FileCheck,[m
+[32m+[m[32m  XCircle,[m
+[32m+[m[32m  Check,[m
+[32m+[m[32m  Star,[m
+[32m+[m[32m  ListChecks,[m
+[32m+[m[32m  GraduationCap,[m
+[32m+[m[32m  Building2[m
+ } from 'lucide-react';[m
+ [m
+[32m+[m[32minterface PageExtraction {[m
+[32m+[m[32m  page_number: number;[m
+[32m+[m[32m  text: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32minterface PDFExtractionResponse {[m
+[32m+[m[32m  pages: PageExtraction[];[m
+[32m+[m[32m  total_pages: number;[m
+[32m+[m[32m  file_name: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32minterface JobSkill {[m
+[32m+[m[32m  name: string;[m
+[32m+[m[32m  evidence: string;[m
+[32m+[m[32m  importance: 'required' | 'preferred';[m
+[32m+[m[32m  source_text: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32minterface JobDescriptionResponse {[m
+[32m+[m[32m  role?: string;[m
+[32m+[m[32m  company?: string;[m
+[32m+[m[32m  summary?: string;[m
+[32m+[m[32m  required_skills: JobSkill[];[m
+[32m+[m[32m  preferred_skills: JobSkill[];[m
+[32m+[m[32m  responsibilities: string[];[m
+[32m+[m[32m  qualifications: string[];[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst formatFileSize = (bytes: number): string => {[m
+[32m+[m[32m  if (bytes === 0) return '0 Bytes';[m
+[32m+[m[32m  const k = 1024;[m
+[32m+[m[32m  const sizes = ['Bytes', 'KB', 'MB', 'GB'];[m
+[32m+[m[32m  const i = Math.floor(Math.log(bytes) / Math.log(k));[m
+[32m+[m[32m  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];[m
+[32m+[m[32m};[m
+[32m+[m
+ export default function App() {[m
+   const [healthStatus, setHealthStatus] = useState<'checking' | 'ok' | 'error'>('checking');[m
+   const [resumeFile, setResumeFile] = useState<File | null>(null);[m
+   const [jobDescription, setJobDescription] = useState<string>('');[m
+ [m
+[32m+[m[32m  // PDF Extraction state[m
+[32m+[m[32m  const [isExtracting, setIsExtracting] = useState<boolean>(false);[m
+[32m+[m[32m  const [extractionResult, setExtractionResult] = useState<PDFExtractionResponse | null>(null);[m
+[32m+[m[32m  const [extractionError, setExtractionError] = useState<string | null>(null);[m
+[32m+[m[32m  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(true);[m
+[32m+[m
+[32m+[m[32m  // JD Analysis state[m
+[32m+[m[32m  const [isAnalyzingJD, setIsAnalyzingJD] = useState<boolean>(false);[m
+[32m+[m[32m  const [jdResult, setJdResult] = useState<JobDescriptionResponse | null>(null);[m
+[32m+[m[32m  const [jdError, setJdError] = useState<string | null>(null);[m
+[32m+[m
+   useEffect(() => {[m
+     const checkBackendHealth = async () => {[m
+       try {[m
+[36m@@ -40,6 +97,64 @@[m [mexport default function App() {[m
+     checkBackendHealth();[m
+   }, []);[m
+ [m
+[32m+[m[32m  const handleFileSelect = async (selectedFile: File) => {[m
+[32m+[m[32m    setResumeFile(selectedFile);[m
+[32m+[m[32m    setExtractionError(null);[m
+[32m+[m[32m    setExtractionResult(null);[m
+[32m+[m[32m    setIsExtracting(true);[m
+[32m+[m
+[32m+[m[32m    const formData = new FormData();[m
+[32m+[m[32m    formData.append('file', selectedFile);[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const response = await fetch('/api/resume/extract', {[m
+[32m+[m[32m        method: 'POST',[m
+[32m+[m[32m        body: formData,[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (!response.ok) {[m
+[32m+[m[32m        const errData = await response.json().catch(() => ({ detail: 'Failed to parse PDF.' }));[m
+[32m+[m[32m        throw new Error(errData.detail || 'Extraction failed.');[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const data: PDFExtractionResponse = await response.json();[m
+[32m+[m[32m      setExtractionResult(data);[m
+[32m+[m[32m      setIsPreviewOpen(true);[m
+[32m+[m[32m    } catch (err: unknown) {[m
+[32m+[m[32m      const message = err instanceof Error ? err.message : 'An error occurred while extracting PDF.';[m
+[32m+[m[32m      setExtractionError(message);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setIsExtracting(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleAnalyzeJD = async () => {[m
+[32m+[m[32m    if (!jobDescription.trim()) return;[m
+[32m+[m[32m    setJdError(null);[m
+[32m+[m[32m    setIsAnalyzingJD(true);[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const response = await fetch('/api/jd/analyze', {[m
+[32m+[m[32m        method: 'POST',[m
+[32m+[m[32m        headers: { 'Content-Type': 'application/json' },[m
+[32m+[m[32m        body: JSON.stringify({ text: jobDescription }),[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (!response.ok) {[m
+[32m+[m[32m        const errData = await response.json().catch(() => ({ detail: 'Failed to analyze Job Description.' }));[m
+[32m+[m[32m        throw new Error(errData.detail || 'Analysis failed.');[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const data: JobDescriptionResponse = await response.json();[m
+[32m+[m[32m      setJdResult(data);[m
+[32m+[m[32m    } catch (err: unknown) {[m
+[32m+[m[32m      const message = err instanceof Error ? err.message : 'An error occurred while analyzing JD.';[m
+[32m+[m[32m      setJdError(message);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setIsAnalyzingJD(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+   return ([m
+     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-white">[m
+       {/* Top Navbar */}[m
+[36m@@ -54,7 +169,7 @@[m [mexport default function App() {[m
+                 Resume-to-JD Gap Analyzer[m
+               </span>[m
+               <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-medium">[m
+[31m-                v1.0 Baseline[m
+[32m+[m[32m                Phase 4: Structured JD Analysis[m
+               </span>[m
+             </div>[m
+           </div>[m
+[36m@@ -87,109 +202,374 @@[m [mexport default function App() {[m
+       {/* Main Container */}[m
+       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col justify-center">[m
+         {/* Hero Banner */}[m
+[31m-        <div className="text-center max-w-3xl mx-auto mb-12">[m
+[32m+[m[32m        <div className="text-center max-w-3xl mx-auto mb-10">[m
+           <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-cyan-400 text-xs font-medium mb-4">[m
+             <ShieldCheck className="w-4 h-4 text-cyan-400" />[m
+[31m-            <span>Deterministic Skill Matching & Grounded AI Recommendations</span>[m
+[32m+[m[32m            <span>Structured Job Description Analysis & Requirement Extraction</span>[m
+           </div>[m
+           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">[m
+[31m-            AI-Powered Resume-to-JD <br />[m
+[32m+[m[32m            Structured JD Parsing & <br />[m
+             <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 bg-clip-text text-transparent">[m
+[31m-              Gap Analysis Engine[m
+[32m+[m[32m              Grounded Requirement Extraction[m
+             </span>[m
+           </h1>[m
+           <p className="text-slate-400 text-base sm:text-lg leading-relaxed">[m
+[31m-            Upload candidate resumes and job descriptions to receive rigorous, deterministic skill gap breakdowns and verified learning recommendations.[m
+[32m+[m[32m            Extract target role, required vs. preferred technical skills, and key job duties with zero hallucination.[m
+           </p>[m
+         </div>[m
+ [m
+         {/* Input Cards Grid */}[m
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">[m
+[31m-          {/* Card 1: Resume Upload Placeholder */}[m
+[32m+[m[32m          {/* Card 1: Resume Upload & Extraction Status */}[m
+           <div className="glass-card-interactive rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">[m
+             <div>[m
+[31m-              <div className="flex items-center space-x-3 mb-4">[m
+[31m-                <div className="p-2.5 rounded-xl bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">[m
+[31m-                  <FileText className="w-5 h-5" />[m
+[31m-                </div>[m
+[31m-                <div>[m
+[31m-                  <h2 className="text-lg font-semibold text-white">1. Candidate Resume</h2>[m
+[31m-                  <p className="text-xs text-slate-400">Upload PDF resume for structured skill extraction</p>[m
+[32m+[m[32m              <div className="flex items-center justify-between mb-4">[m
+[32m+[m[32m                <div className="flex items-center space-x-3">[m
+[32m+[m[32m                  <div className="p-2.5 rounded-xl bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">[m
+[32m+[m[32m                    <FileText className="w-5 h-5" />[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                  <div>[m
+[32m+[m[32m                    <h2 className="text-lg font-semibold text-white">1. Candidate Resume</h2>[m
+[32m+[m[32m                    <p className="text-xs text-slate-400">Upload PDF resume for page-by-page text extraction</p>[m
+[32m+[m[32m                  </div>[m
+                 </div>[m
+[32m+[m[32m                {extractionResult && ([m
+[32m+[m[32m                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">[m
+[32m+[m[32m                    <FileCheck className="w-3.5 h-3.5 mr-1" />[m
+[32m+[m[32m                    Extracted[m
+[32m+[m[32m                  </span>[m
+[32m+[m[32m                )}[m
+               </div>[m
+ [m
+[31m-              {/* Upload Drop Zone Placeholder */}[m
+[31m-              <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl p-8 text-center transition-colors bg-slate-900/40 cursor-pointer flex flex-col items-center justify-center min-h-[200px]">[m
+[31m-                <div className="p-3 rounded-full bg-slate-800/80 text-slate-400 mb-3">[m
+[31m-                  <UploadCloud className="w-8 h-8 text-cyan-400" />[m
+[31m-                </div>[m
+[31m-                <p className="text-sm font-medium text-slate-200 mb-1">[m
+[31m-                  {resumeFile ? resumeFile.name : 'Click to select or drag PDF resume here'}[m
+[31m-                </p>[m
+[31m-                <p className="text-xs text-slate-500">[m
+[31m-                  Supports PDF format (Max 10MB)[m
+[31m-                </p>[m
+[31m-                <input [m
+[31m-                  type="file" [m
+[31m-                  accept=".pdf" [m
+[31m-                  className="hidden" [m
+[31m-                  id="resume-input"[m
+[31m-                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}[m
+[31m-                />[m
+[31m-                <label [m
+[31m-                  htmlFor="resume-input" [m
+[31m-                  className="mt-4 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition-colors cursor-pointer"[m
+[31m-                >[m
+[31m-                  Browse File[m
+[31m-                </label>[m
+[32m+[m[32m              {/* Upload Drop Zone */}[m
+[32m+[m[32m              <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl p-6 text-center transition-colors bg-slate-900/40 relative">[m
+[32m+[m[32m                {isExtracting ? ([m
+[32m+[m[32m                  <div className="py-8 flex flex-col items-center justify-center space-y-3">[m
+[32m+[m[32m                    <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />[m
+[32m+[m[32m                    <p className="text-sm font-medium text-slate-300">Extracting PDF text page by page...</p>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                ) : ([m
+[32m+[m[32m                  <div className="flex flex-col items-center justify-center min-h-[160px]">[m
+[32m+[m[32m                    <div className="p-3 rounded-full bg-slate-800/80 text-slate-400 mb-3">[m
+[32m+[m[32m                      <UploadCloud className="w-8 h-8 text-cyan-400" />[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                    <p className="text-sm font-medium text-slate-200 mb-1">[m
+[32m+[m[32m                      {resumeFile ? resumeFile.name : 'Click to select or drag PDF resume here'}[m
+[32m+[m[32m                    </p>[m
+[32m+[m[32m                    <p className="text-xs text-slate-500">[m
+[32m+[m[32m                      Supports PDF format only (Max 10MB)[m
+[32m+[m[32m                    </p>[m
+[32m+[m[32m                    <input[m[41m [m
+[32m+[m[32m                      type="file"[m[41m [m
+[32m+[m[32m                      accept=".pdf"[m[41m [m
+[32m+[m[32m                      className="hidden"[m[41m [m
+[32m+[m[32m                      id="resume-input"[m
+[32m+[m[32m                      onChange={(e) => {[m
+[32m+[m[32m                        if (e.target.files?.[0]) {[m
+[32m+[m[32m                          handleFileSelect(e.target.files[0]);[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                      }}[m
+[32m+[m[32m                    />[m
+[32m+[m[32m                    <label[m[41m [m
+[32m+[m[32m                      htmlFor="resume-input"[m[41m [m
+[32m+[m[32m                      className="mt-4 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white transition-colors cursor-pointer shadow-lg shadow-cyan-600/20"[m
+[32m+[m[32m                    >[m
+[32m+[m[32m                      {resumeFile ? 'Change File' : 'Select PDF File'}[m
+[32m+[m[32m                    </label>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                )}[m
+               </div>[m
+[32m+[m
+[32m+[m[32m              {/* Error Alert Display */}[m
+[32m+[m[32m              {extractionError && ([m
+[32m+[m[32m                <div className="mt-4 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start space-x-2">[m
+[32m+[m[32m                  <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />[m
+[32m+[m[32m                  <div>[m
+[32m+[m[32m                    <span className="font-semibold block mb-0.5">Extraction Error</span>[m
+[32m+[m[32m                    <span>{extractionError}</span>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              )}[m
+[32m+[m
+[32m+[m[32m              {/* Extraction Metadata Banner */}[m
+[32m+[m[32m              {extractionResult && ([m
+[32m+[m[32m                <div className="mt-4 p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">[m
+[32m+[m[32m                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 w-full sm:w-auto">[m
+[32m+[m[32m                    <div className="flex items-center space-x-2">[m
+[32m+[m[32m                      <span className="text-slate-400">Filename:</span>[m
+[32m+[m[32m                      <span className="font-semibold text-slate-200 truncate max-w-[150px]" title={extractionResult.file_name}>{extractionResult.file_name}</span>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                    {resumeFile && ([m
+[32m+[m[32m                      <div className="flex items-center space-x-2">[m
+[32m+[m[32m                        <span className="text-slate-400">File Size:</span>[m
+[32m+[m[32m                        <span className="font-semibold text-slate-300">{formatFileSize(resumeFile.size)}</span>[m
+[32m+[m[32m                      </div>[m
+[32m+[m[32m                    )}[m
+[32m+[m[32m                    <div className="flex items-center space-x-2">[m
+[32m+[m[32m                      <span className="text-slate-400">Pages:</span>[m
+[32m+[m[32m                      <span className="font-semibold text-cyan-400">{extractionResult.total_pages} page(s)</span>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                  <div className="text-right shrink-0">[m
+[32m+[m[32m                    <span className="px-2.5 py-1 rounded-md bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 font-medium inline-flex items-center">[m
+[32m+[m[32m                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />[m
+[32m+[m[32m                      Status: Extracted Successfully[m
+[32m+[m[32m                    </span>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              )}[m
+             </div>[m
+           </div>[m
+ [m
+[31m-          {/* Card 2: Job Description Input Placeholder */}[m
+[32m+[m[32m          {/* Card 2: Job Description Input & Analysis */}[m
+           <div className="glass-card-interactive rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">[m
+             <div>[m
+[31m-              <div className="flex items-center space-x-3 mb-4">[m
+[31m-                <div className="p-2.5 rounded-xl bg-blue-950/80 text-blue-400 border border-blue-800/50">[m
+[31m-                  <Briefcase className="w-5 h-5" />[m
+[31m-                </div>[m
+[31m-                <div>[m
+[31m-                  <h2 className="text-lg font-semibold text-white">2. Job Description (JD)</h2>[m
+[31m-                  <p className="text-xs text-slate-400">Paste target job role and requirement details</p>[m
+[32m+[m[32m              <div className="flex items-center justify-between mb-4">[m
+[32m+[m[32m                <div className="flex items-center space-x-3">[m
+[32m+[m[32m                  <div className="p-2.5 rounded-xl bg-blue-950/80 text-blue-400 border border-blue-800/50">[m
+[32m+[m[32m                    <Briefcase className="w-5 h-5" />[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                  <div>[m
+[32m+[m[32m                    <h2 className="text-lg font-semibold text-white">2. Job Description (JD)</h2>[m
+[32m+[m[32m                    <p className="text-xs text-slate-400">Paste target job role and requirement details</p>[m
+[32m+[m[32m                  </div>[m
+                 </div>[m
+[32m+[m[32m                {jdResult && ([m
+[32m+[m[32m                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">[m
+[32m+[m[32m                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />[m
+[32m+[m[32m                    Analyzed[m
+[32m+[m[32m                  </span>[m
+[32m+[m[32m                )}[m
+               </div>[m
+ [m
+[31m-              {/* JD Textarea Placeholder */}[m
+[32m+[m[32m              {/* JD Textarea */}[m
+               <textarea[m
+                 value={jobDescription}[m
+                 onChange={(e) => setJobDescription(e.target.value)}[m
+                 placeholder="Paste Job Description here (e.g. Required skills, experience level, responsibilities, technical stack requirements)..."[m
+[31m-                className="w-full h-[200px] p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all resize-none font-mono"[m
+[32m+[m[32m                className="w-full h-[180px] p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all resize-none font-mono mb-4"[m
+               />[m
+[32m+[m
+[32m+[m[32m              {/* Analyze JD Trigger Button */}[m
+[32m+[m[32m              <div className="flex justify-end mb-4">[m
+[32m+[m[32m                <button[m
+[32m+[m[32m                  onClick={handleAnalyzeJD}[m
+[32m+[m[32m                  disabled={isAnalyzingJD || !jobDescription.trim()}[m
+[32m+[m[32m                  className={`inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold shadow-lg transition-all ${[m
+[32m+[m[32m                    !isAnalyzingJD && jobDescription.trim()[m
+[32m+[m[32m                      ? 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shadow-blue-600/20'[m
+[32m+[m[32m                      : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'[m
+[32m+[m[32m                  }`}[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  {isAnalyzingJD ? ([m
+[32m+[m[32m                    <>[m
+[32m+[m[32m                      <Loader2 className="w-4 h-4 mr-2 animate-spin text-blue-400" />[m
+[32m+[m[32m                      <span>Analyzing Job Requirements...</span>[m
+[32m+[m[32m                    </>[m
+[32m+[m[32m                  ) : ([m
+[32m+[m[32m                    <>[m
+[32m+[m[32m                      <Sparkles className="w-4 h-4 mr-1.5 text-cyan-400" />[m
+[32m+[m[32m                      <span>Analyze JD Requirements</span>[m
+[32m+[m[32m                    </>[m
+[32m+[m[32m                  )}[m
+[32m+[m[32m                </button>[m
+[32m+[m[32m              </div>[m
+[32m+[m
+[32m+[m[32m              {/* Error Alert Display */}[m
+[32m+[m[32m              {jdError && ([m
+[32m+[m[32m                <div className="mb-4 p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start space-x-2">[m
+[32m+[m[32m                  <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />[m
+[32m+[m[32m                  <div>[m
+[32m+[m[32m                    <span className="font-semibold block mb-0.5">JD Analysis Error</span>[m
+[32m+[m[32m                    <span>{jdError}</span>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              )}[m
+             </div>[m
+           </div>[m
+         </div>[m
+ [m
+[32m+[m[32m        {/* Structured JD Analysis Result Panel */}[m
+[32m+[m[32m        {jdResult && ([m
+[32m+[m[32m          <div className="mb-8 rounded-2xl bg-slate-900/90 border border-slate-800 p-6 shadow-2xl space-y-6">[m
+[32m+[m[32m            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">[m
+[32m+[m[32m              <div>[m
+[32m+[m[32m                <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider block mb-1">[m
+[32m+[m[32m                  Structured Job Requirement Profile[m
+[32m+[m[32m                </span>[m
+[32m+[m[32m                <h3 className="text-xl font-bold text-white flex items-center">[m
+[32m+[m[32m                  <Briefcase className="w-5 h-5 mr-2 text-cyan-400" />[m
+[32m+[m[32m                  {jdResult.role || 'Unspecified Role'}[m
+[32m+[m[32m                </h3>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m              {jdResult.company && ([m
+[32m+[m[32m                <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-300">[m
+[32m+[m[32m                  <Building2 className="w-4 h-4 mr-1.5 text-cyan-400" />[m
+[32m+[m[32m                  <span>{jdResult.company}</span>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              )}[m
+[32m+[m[32m            </div>[m
+[32m+[m
+[32m+[m[32m            {jdResult.summary && ([m
+[32m+[m[32m              <p className="text-xs text-slate-300 leading-relaxed italic bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">[m
+[32m+[m[32m                "{jdResult.summary}"[m
+[32m+[m[32m              </p>[m
+[32m+[m[32m            )}[m
+[32m+[m
+[32m+[m[32m            {/* Required vs Preferred Skills Grid */}[m
+[32m+[m[32m            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">[m
+[32m+[m[32m              {/* Required Skills */}[m
+[32m+[m[32m              <div className="rounded-xl bg-slate-950 p-4 border border-cyan-900/40">[m
+[32m+[m[32m                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">[m
+[32m+[m[32m                  <Check className="w-4 h-4 text-cyan-400" />[m
+[32m+[m[32m                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">[m
+[32m+[m[32m                    Required Skills ({jdResult.required_skills.length})[m
+[32m+[m[32m                  </h4>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                {jdResult.required_skills.length > 0 ? ([m
+[32m+[m[32m                  <div className="flex flex-wrap gap-2">[m
+[32m+[m[32m                    {jdResult.required_skills.map((skill, idx) => ([m
+[32m+[m[32m                      <span[m[41m [m
+[32m+[m[32m                        key={idx}[m
+[32m+[m[32m                        title={`Evidence: ${skill.evidence}`}[m
+[32m+[m[32m                        className="px-2.5 py-1 rounded-lg bg-cyan-950/80 text-cyan-300 border border-cyan-800 text-xs font-medium inline-flex items-center"[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        {skill.name}[m
+[32m+[m[32m                      </span>[m
+[32m+[m[32m                    ))}[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                ) : ([m
+[32m+[m[32m                  <p className="text-xs text-slate-500 italic">No explicit required skills identified.</p>[m
+[32m+[m[32m                )}[m
+[32m+[m[32m              </div>[m
+[32m+[m
+[32m+[m[32m              {/* Preferred Skills */}[m
+[32m+[m[32m              <div className="rounded-xl bg-slate-950 p-4 border border-purple-900/40">[m
+[32m+[m[32m                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">[m
+[32m+[m[32m                  <Star className="w-4 h-4 text-purple-400" />[m
+[32m+[m[32m                  <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">[m
+[32m+[m[32m                    Preferred Skills ({jdResult.preferred_skills.length})[m
+[32m+[m[32m                  </h4>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                {jdResult.preferred_skills.length > 0 ? ([m
+[32m+[m[32m                  <div className="flex flex-wrap gap-2">[m
+[32m+[m[32m                    {jdResult.preferred_skills.map((skill, idx) => ([m
+[32m+[m[32m                      <span[m[41m [m
+[32m+[m[32m                        key={idx}[m
+[32m+[m[32m                        title={`Evidence: ${skill.evidence}`}[m
+[32m+[m[32m                        className="px-2.5 py-1 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-800 text-xs font-medium inline-flex items-center"[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        {skill.name}[m
+[32m+[m[32m                      </span>[m
+[32m+[m[32m                    ))}[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                ) : ([m
+[32m+[m[32m                  <p className="text-xs text-slate-500 italic">No explicit preferred skills identified.</p>[m
+[32m+[m[32m                )}[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            </div>[m
+[32m+[m
+[32m+[m[32m            {/* Responsibilities */}[m
+[32m+[m[32m            {jdResult.responsibilities.length > 0 && ([m
+[32m+[m[32m              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">[m
+[32m+[m[32m                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">[m
+[32m+[m[32m                  <ListChecks className="w-4 h-4 text-blue-400" />[m
+[32m+[m[32m                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">[m
+[32m+[m[32m                    Key Responsibilities ({jdResult.responsibilities.length})[m
+[32m+[m[32m                  </h4>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                <ul className="space-y-1.5 text-xs text-slate-300 list-disc list-inside leading-relaxed">[m
+[32m+[m[32m                  {jdResult.responsibilities.map((resp, idx) => ([m
+[32m+[m[32m                    <li key={idx}>{resp}</li>[m
+[32m+[m[32m                  ))}[m
+[32m+[m[32m                </ul>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            )}[m
+[32m+[m
+[32m+[m[32m            {/* Qualifications */}[m
+[32m+[m[32m            {jdResult.qualifications.length > 0 && ([m
+[32m+[m[32m              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">[m
+[32m+[m[32m                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">[m
+[32m+[m[32m                  <GraduationCap className="w-4 h-4 text-emerald-400" />[m
+[32m+[m[32m                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">[m
+[32m+[m[32m                    Qualifications & Credentials ({jdResult.qualifications.length})[m
+[32m+[m[32m                  </h4>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                <ul className="space-y-1.5 text-xs text-slate-300 list-disc list-inside leading-relaxed">[m
+[32m+[m[32m                  {jdResult.qualifications.map((qual, idx) => ([m
+[32m+[m[32m                    <li key={idx}>{qual}</li>[m
+[32m+[m[32m                  ))}[m
+[32m+[m[32m                </ul>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        )}[m
+[32m+[m
+[32m+[m[32m        {/* Collapsible Text Preview Component */}[m
+[32m+[m[32m        {extractionResult && ([m
+[32m+[m[32m          <div className="mb-8 rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden shadow-2xl transition-all">[m
+[32m+[m[32m            <button[m
+[32m+[m[32m              onClick={() => setIsPreviewOpen(!isPreviewOpen)}[m
+[32m+[m[32m              className="w-full p-4 bg-slate-900 hover:bg-slate-800/80 flex items-center justify-between transition-colors border-b border-slate-800"[m
+[32m+[m[32m            >[m
+[32m+[m[32m              <div className="flex items-center space-x-3">[m
+[32m+[m[32m                <FileText className="w-5 h-5 text-cyan-400" />[m
+[32m+[m[32m                <span className="font-semibold text-sm text-slate-200">[m
+[32m+[m[32m                  Extracted Resume Text Preview ({extractionResult.total_pages} page{extractionResult.total_pages > 1 ? 's' : ''})[m
+[32m+[m[32m                </span>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m              <div className="flex items-center space-x-2 text-xs text-slate-400">[m
+[32m+[m[32m                <span>{isPreviewOpen ? 'Collapse Preview' : 'Expand Preview'}</span>[m
+[32m+[m[32m                {isPreviewOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            </button>[m
+[32m+[m
+[32m+[m[32m            {isPreviewOpen && ([m
+[32m+[m[32m              <div className="p-6 space-y-6 max-h-[500px] overflow-y-auto">[m
+[32m+[m[32m                {extractionResult.pages.map((page) => ([m
+[32m+[m[32m                  <div key={page.page_number} className="rounded-xl bg-slate-950 border border-slate-800/80 p-4">[m
+[32m+[m[32m                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800">[m
+[32m+[m[32m                      <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">[m
+[32m+[m[32m                        Page {page.page_number}[m
+[32m+[m[32m                      </span>[m
+[32m+[m[32m                      <span className="text-xs text-slate-500">[m
+[32m+[m[32m                        {page.text.length} characters[m
+[32m+[m[32m                      </span>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                    <pre className="whitespace-pre-wrap font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto">[m
+[32m+[m[32m                      {page.text || <span className="italic text-slate-600">No text content found on this page.</span>}[m
+[32m+[m[32m                    </pre>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                ))}[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        )}[m
+[32m+[m
+         {/* Action Button Section Placeholder */}[m
+         <div className="flex flex-col items-center justify-center space-y-4">[m
+           <button[m
+[31m-            disabled={true}[m
+[31m-            className="group relative inline-flex items-center justify-center px-8 py-4 text-base font-bold text-slate-400 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl transition-all opacity-80 cursor-not-allowed"[m
+[32m+[m[32m            disabled={!extractionResult || !jobDescription.trim()}[m
+[32m+[m[32m            className={`group relative inline-flex items-center justify-center px-8 py-4 text-base font-bold rounded-2xl shadow-xl transition-all ${[m
+[32m+[m[32m              extractionResult && jobDescription.trim()[m
+[32m+[m[32m                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-cyan-500/25 cursor-pointer'[m
+[32m+[m[32m                : 'bg-slate-900/80 text-slate-500 border border-slate-800 cursor-not-allowed'[m
+[32m+[m[32m            }`}[m
+           >[m
+             <Sparkles className="w-5 h-5 mr-2 text-cyan-400" />[m
+             <span>Analyze Resume-to-JD Gap</span>[m
+[31m-            <ArrowRight className="w-5 h-5 ml-2 text-slate-500" />[m
+[32m+[m[32m            <ArrowRight className="w-5 h-5 ml-2" />[m
+           </button>[m
+           <p className="text-xs text-slate-500 flex items-center space-x-1">[m
+             <Cpu className="w-3.5 h-3.5 text-cyan-500" />[m
+[31m-            <span>Analysis engine placeholder ready (PDF parsing & deterministic gap pipeline coming in Phase 2)</span>[m
+[32m+[m[32m            <span>Phase 4 complete: Structured JD requirement analysis active. Resume-to-JD Gap Engine coming next.</span>[m
+           </p>[m
+         </div>[m
+       </main>[m
+ [m
+       {/* Footer */}[m
+       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500 bg-slate-950">[m
+[31m-        Resume-to-JD Gap Analyzer &copy; {new Date().getFullYear()} — Built with FastAPI, React, TypeScript & Tailwind CSS[m
+[32m+[m[32m        Resume-to-JD Gap Analyzer &copy; {new Date().getFullYear()} — Built with FastAPI, PyMuPDF, React & TypeScript[m
+       </footer>[m
+     </div>[m
+   );[m
