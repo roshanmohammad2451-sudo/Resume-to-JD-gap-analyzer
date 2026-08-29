@@ -3,11 +3,9 @@ import {
   FileText, 
   Briefcase, 
   Sparkles, 
-  UploadCloud, 
   CheckCircle2, 
   AlertCircle, 
   ShieldCheck, 
-  Cpu, 
   Target, 
   ArrowRight,
   ChevronDown,
@@ -17,38 +15,16 @@ import {
   XCircle,
   Check,
   Star,
-  ListChecks,
-  GraduationCap,
   Building2
 } from 'lucide-react';
-
-interface PageExtraction {
-  page_number: number;
-  text: string;
-}
-
-interface PDFExtractionResponse {
-  pages: PageExtraction[];
-  total_pages: number;
-  file_name: string;
-}
-
-interface JobSkill {
-  name: string;
-  evidence: string;
-  importance: 'required' | 'preferred';
-  source_text: string;
-}
-
-interface JobDescriptionResponse {
-  role?: string;
-  company?: string;
-  summary?: string;
-  required_skills: JobSkill[];
-  preferred_skills: JobSkill[];
-  responsibilities: string[];
-  qualifications: string[];
-}
+import { 
+  PDFExtractionResponse, 
+  ResumeProfile, 
+  JobDescriptionResponse, 
+  GapAnalysisResponse 
+} from './types/gap';
+import { GapDashboard } from './components/GapDashboard';
+import { PDFDropzone } from './components/PDFDropzone';
 
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
@@ -69,10 +45,24 @@ export default function App() {
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(true);
 
-  // JD Analysis state
+  // Resume Profile state
+  const [resumeProfile, setResumeProfile] = useState<ResumeProfile | null>(null);
+
+  // JD Analysis & Input Mode state
+  const [jdInputMode, setJdInputMode] = useState<'paste' | 'upload'>('paste');
+  const [jdFile, setJdFile] = useState<File | null>(null);
+  const [isExtractingJD, setIsExtractingJD] = useState<boolean>(false);
+  const [jdExtractionResult, setJdExtractionResult] = useState<PDFExtractionResponse | null>(null);
+  const [jdExtractionError, setJdExtractionError] = useState<string | null>(null);
+  const [isJdPreviewOpen, setIsJdPreviewOpen] = useState<boolean>(false);
   const [isAnalyzingJD, setIsAnalyzingJD] = useState<boolean>(false);
   const [jdResult, setJdResult] = useState<JobDescriptionResponse | null>(null);
   const [jdError, setJdError] = useState<string | null>(null);
+
+  // Gap Analysis state
+  const [isAnalyzingGap, setIsAnalyzingGap] = useState<boolean>(false);
+  const [gapResult, setGapResult] = useState<GapAnalysisResponse | null>(null);
+  const [gapError, setGapError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkBackendHealth = async () => {
@@ -98,9 +88,24 @@ export default function App() {
   }, []);
 
   const handleFileSelect = async (selectedFile: File) => {
+    // Validate file format
+    if (!selectedFile.name.toLowerCase().endsWith('.pdf') && selectedFile.type !== 'application/pdf') {
+      setExtractionError('Unsupported file format. Only PDF files (.pdf) are accepted.');
+      return;
+    }
+
+    // Validate size limit (10MB)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setExtractionError('File size exceeds maximum limit of 10MB.');
+      return;
+    }
+
     setResumeFile(selectedFile);
     setExtractionError(null);
     setExtractionResult(null);
+    setResumeProfile(null);
+    setGapResult(null);
+    setGapError(null);
     setIsExtracting(true);
 
     const formData = new FormData();
@@ -128,9 +133,69 @@ export default function App() {
     }
   };
 
+  const handleJdFileSelect = async (selectedFile: File) => {
+    // Validate file format
+    if (!selectedFile.name.toLowerCase().endsWith('.pdf') && selectedFile.type !== 'application/pdf') {
+      setJdExtractionError('Unsupported file format. Only PDF files (.pdf) are accepted.');
+      return;
+    }
+
+    // Validate size limit (10MB)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setJdExtractionError('File size exceeds maximum limit of 10MB.');
+      return;
+    }
+
+    setJdFile(selectedFile);
+    setJdExtractionError(null);
+    setJdExtractionResult(null);
+    setJdResult(null);
+    setGapResult(null);
+    setGapError(null);
+    setIsExtractingJD(true);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await fetch('/api/jd/extract', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ detail: 'Failed to extract text from JD PDF.' }));
+        throw new Error(errData.detail || 'JD PDF extraction failed.');
+      }
+
+      const data: PDFExtractionResponse = await response.json();
+      setJdExtractionResult(data);
+      const combinedText = data.pages.map((p) => p.text).join('\n\n').trim();
+      setJobDescription(combinedText);
+      setIsJdPreviewOpen(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred while extracting JD PDF.';
+      setJdExtractionError(message);
+    } finally {
+      setIsExtractingJD(false);
+    }
+  };
+
+  const handleClearJdFile = () => {
+    setJdFile(null);
+    setJdExtractionResult(null);
+    setJdExtractionError(null);
+    setJobDescription('');
+    setJdResult(null);
+    setGapResult(null);
+    setGapError(null);
+  };
+
   const handleAnalyzeJD = async () => {
     if (!jobDescription.trim()) return;
     setJdError(null);
+    setGapResult(null);
+    setGapError(null);
     setIsAnalyzingJD(true);
 
     try {
@@ -155,6 +220,82 @@ export default function App() {
     }
   };
 
+  const handleAnalyzeGap = async () => {
+    if (!extractionResult || extractionResult.pages.length === 0) {
+      setGapError('Please select and extract a candidate PDF resume first.');
+      return;
+    }
+    if (!jobDescription.trim()) {
+      setGapError('Please enter a target Job Description.');
+      return;
+    }
+
+    setGapError(null);
+    setIsAnalyzingGap(true);
+
+    try {
+      // 1. Ensure structured ResumeProfile exists
+      let currentResumeProfile = resumeProfile;
+      if (!currentResumeProfile) {
+        const fullResumeText = extractionResult.pages.map(p => p.text).join('\n');
+        const resumeRes = await fetch('/api/resume/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: fullResumeText }),
+        });
+
+        if (!resumeRes.ok) {
+          const errData = await resumeRes.json().catch(() => ({ detail: 'Failed to analyze candidate resume text.' }));
+          throw new Error(errData.detail || 'Resume analysis failed.');
+        }
+
+        currentResumeProfile = await resumeRes.json();
+        setResumeProfile(currentResumeProfile);
+      }
+
+      // 2. Ensure structured JobDescription exists
+      let currentJdResult = jdResult;
+      if (!currentJdResult) {
+        const jdRes = await fetch('/api/jd/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: jobDescription }),
+        });
+
+        if (!jdRes.ok) {
+          const errData = await jdRes.json().catch(() => ({ detail: 'Failed to analyze Job Description requirements.' }));
+          throw new Error(errData.detail || 'JD requirement analysis failed.');
+        }
+
+        currentJdResult = await jdRes.json();
+        setJdResult(currentJdResult);
+      }
+
+      // 3. Perform Deterministic Gap Analysis
+      const gapRes = await fetch('/api/gap/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_profile: currentResumeProfile,
+          job_description: currentJdResult,
+        }),
+      });
+
+      if (!gapRes.ok) {
+        const errData = await gapRes.json().catch(() => ({ detail: 'Failed to complete gap analysis.' }));
+        throw new Error(errData.detail || 'Gap analysis failed.');
+      }
+
+      const gapData: GapAnalysisResponse = await gapRes.json();
+      setGapResult(gapData);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred during gap analysis.';
+      setGapError(message);
+    } finally {
+      setIsAnalyzingGap(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-white">
       {/* Top Navbar */}
@@ -169,7 +310,7 @@ export default function App() {
                 Resume-to-JD Gap Analyzer
               </span>
               <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-medium">
-                Phase 4: Structured JD Analysis
+                Phase 7: RAG Grounded Recommendations
               </span>
             </div>
           </div>
@@ -205,16 +346,16 @@ export default function App() {
         <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-cyan-400 text-xs font-medium mb-4">
             <ShieldCheck className="w-4 h-4 text-cyan-400" />
-            <span>Structured Job Description Analysis & Requirement Extraction</span>
+            <span>Deterministic & Explainable Gap Analysis Engine</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
-            Structured JD Parsing & <br />
+            Resume-to-JD Gap Analysis & <br />
             <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 bg-clip-text text-transparent">
-              Grounded Requirement Extraction
+              Explainable Match Evaluation
             </span>
           </h1>
           <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
-            Extract target role, required vs. preferred technical skills, and key job duties with zero hallucination.
+            Rule-based skill normalization, weighted requirement scoring, and grounded gap verification without non-deterministic AI variance.
           </p>
         </div>
 
@@ -242,43 +383,25 @@ export default function App() {
               </div>
 
               {/* Upload Drop Zone */}
-              <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl p-6 text-center transition-colors bg-slate-900/40 relative">
-                {isExtracting ? (
-                  <div className="py-8 flex flex-col items-center justify-center space-y-3">
-                    <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-                    <p className="text-sm font-medium text-slate-300">Extracting PDF text page by page...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center min-h-[160px]">
-                    <div className="p-3 rounded-full bg-slate-800/80 text-slate-400 mb-3">
-                      <UploadCloud className="w-8 h-8 text-cyan-400" />
-                    </div>
-                    <p className="text-sm font-medium text-slate-200 mb-1">
-                      {resumeFile ? resumeFile.name : 'Click to select or drag PDF resume here'}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Supports PDF format only (Max 10MB)
-                    </p>
-                    <input 
-                      type="file" 
-                      accept=".pdf" 
-                      className="hidden" 
-                      id="resume-input"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          handleFileSelect(e.target.files[0]);
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor="resume-input" 
-                      className="mt-4 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-semibold text-white transition-colors cursor-pointer shadow-lg shadow-cyan-600/20"
-                    >
-                      {resumeFile ? 'Change File' : 'Select PDF File'}
-                    </label>
-                  </div>
-                )}
-              </div>
+              <PDFDropzone
+                id="resume-dropzone"
+                label="Click to select or drag & drop candidate PDF resume here"
+                sublabel="Supports PDF format only (Max 10MB)"
+                currentFile={resumeFile}
+                isLoading={isExtracting}
+                loadingText="Extracting PDF text page by page..."
+                onFileSelected={handleFileSelect}
+                onError={(err) => setExtractionError(err)}
+                onClear={() => {
+                  setResumeFile(null);
+                  setExtractionResult(null);
+                  setExtractionError(null);
+                  setResumeProfile(null);
+                  setGapResult(null);
+                  setGapError(null);
+                }}
+                accentColor="cyan"
+              />
 
               {/* Error Alert Display */}
               {extractionError && (
@@ -342,13 +465,132 @@ export default function App() {
                 )}
               </div>
 
-              {/* JD Textarea */}
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste Job Description here (e.g. Required skills, experience level, responsibilities, technical stack requirements)..."
-                className="w-full h-[180px] p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all resize-none font-mono mb-4"
-              />
+              {/* JD Input Mode Selector */}
+              <div className="flex items-center space-x-2 mb-3 bg-slate-900/80 p-1 rounded-xl border border-slate-800 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setJdInputMode('paste')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    jdInputMode === 'paste'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Paste Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJdInputMode('upload')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    jdInputMode === 'upload'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Upload PDF
+                </button>
+              </div>
+
+              {jdInputMode === 'paste' ? (
+                /* JD Textarea */
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => {
+                    setJobDescription(e.target.value);
+                    setJdResult(null);
+                    setGapResult(null);
+                    setGapError(null);
+                  }}
+                  placeholder="Paste Job Description here (e.g. Required skills, experience level, responsibilities, technical stack requirements)..."
+                  className="w-full h-[180px] p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all resize-none font-mono mb-4"
+                />
+              ) : (
+                /* JD PDF Dropzone & Extracted Info */
+                <div className="mb-4 space-y-3">
+                  <PDFDropzone
+                    id="jd-dropzone"
+                    label="Click to select or drag & drop Job Description PDF here"
+                    sublabel="Supports PDF format only (Max 10MB)"
+                    currentFile={jdFile}
+                    isLoading={isExtractingJD}
+                    loadingText="Extracting Job Description PDF text page by page..."
+                    onFileSelected={handleJdFileSelect}
+                    onError={(err) => setJdExtractionError(err)}
+                    onClear={handleClearJdFile}
+                    accentColor="blue"
+                  />
+
+                  {/* JD Extraction Error Alert */}
+                  {jdExtractionError && (
+                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start space-x-2">
+                      <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold block mb-0.5">JD Extraction Error</span>
+                        <span>{jdExtractionError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* JD Extraction Metadata Banner */}
+                  {jdExtractionResult && (
+                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div>
+                          <span className="text-slate-400">Filename: </span>
+                          <span className="font-semibold text-slate-200 truncate max-w-[140px]" title={jdExtractionResult.file_name}>
+                            {jdExtractionResult.file_name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Pages: </span>
+                          <span className="font-semibold text-blue-400">{jdExtractionResult.total_pages} page(s)</span>
+                        </div>
+                        {jdFile && (
+                          <div>
+                            <span className="text-slate-400">Size: </span>
+                            <span className="font-semibold text-slate-300">{formatFileSize(jdFile.size)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800 text-[11px] font-medium inline-flex items-center shrink-0">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Extracted Successfully
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Optional View / Edit Extracted Text */}
+                  {jobDescription && (
+                    <div className="rounded-xl bg-slate-900/50 border border-slate-800/80 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setIsJdPreviewOpen(!isJdPreviewOpen)}
+                        className="w-full px-3.5 py-2 flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+                      >
+                        <span className="font-medium">
+                          {isJdPreviewOpen ? 'Hide Extracted JD Text' : 'View / Edit Extracted JD Text'} ({jobDescription.length} characters)
+                        </span>
+                        {isJdPreviewOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                      {isJdPreviewOpen && (
+                        <div className="p-3 border-t border-slate-800/80">
+                          <textarea
+                            value={jobDescription}
+                            onChange={(e) => {
+                              setJobDescription(e.target.value);
+                              setJdResult(null);
+                              setGapResult(null);
+                              setGapError(null);
+                            }}
+                            placeholder="Extracted Job Description text..."
+                            className="w-full h-[130px] p-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono resize-none focus:outline-none focus:border-blue-500/60"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Analyze JD Trigger Button */}
               <div className="flex justify-end mb-4">
@@ -468,40 +710,57 @@ export default function App() {
                 )}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Responsibilities */}
-            {jdResult.responsibilities.length > 0 && (
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">
-                  <ListChecks className="w-4 h-4 text-blue-400" />
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Key Responsibilities ({jdResult.responsibilities.length})
-                  </h4>
-                </div>
-                <ul className="space-y-1.5 text-xs text-slate-300 list-disc list-inside leading-relaxed">
-                  {jdResult.responsibilities.map((resp, idx) => (
-                    <li key={idx}>{resp}</li>
-                  ))}
-                </ul>
+        {/* Action Button & Main Trigger Section */}
+        <div className="flex flex-col items-center justify-center space-y-4 mb-8">
+          {gapError && (
+            <div className="w-full max-w-2xl p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start space-x-3">
+              <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-sm block mb-1">Gap Analysis Error</span>
+                <span>{gapError}</span>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Qualifications */}
-            {jdResult.qualifications.length > 0 && (
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <div className="flex items-center space-x-2 mb-3 pb-2 border-b border-slate-800">
-                  <GraduationCap className="w-4 h-4 text-emerald-400" />
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Qualifications & Credentials ({jdResult.qualifications.length})
-                  </h4>
-                </div>
-                <ul className="space-y-1.5 text-xs text-slate-300 list-disc list-inside leading-relaxed">
-                  {jdResult.qualifications.map((qual, idx) => (
-                    <li key={idx}>{qual}</li>
-                  ))}
-                </ul>
-              </div>
+          <button
+            onClick={handleAnalyzeGap}
+            disabled={isAnalyzingGap || !extractionResult || !jobDescription.trim()}
+            className={`group relative inline-flex items-center justify-center px-8 py-4 text-base font-bold rounded-2xl shadow-xl transition-all ${
+              !isAnalyzingGap && extractionResult && jobDescription.trim()
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-cyan-500/25 cursor-pointer hover:scale-[1.01]'
+                : 'bg-slate-900/80 text-slate-500 border border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            {isAnalyzingGap ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-3 animate-spin text-cyan-400" />
+                <span>Running Deterministic Gap Engine...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 mr-2 text-cyan-400" />
+                <span>Analyze Resume-to-JD Gap</span>
+                <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              </>
             )}
+          </button>
+          <p className="text-xs text-slate-500 flex items-center space-x-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />
+            <span>Deterministic matching engine active: zero LLM variance in gap decisions & scoring.</span>
+          </p>
+        </div>
+
+        {/* Phase 6 Polished Gap Analysis Results Dashboard */}
+        {gapResult && (
+          <div className="mb-12">
+            <GapDashboard
+              gapResult={gapResult}
+              onRetry={handleAnalyzeGap}
+              isReanalyzing={isAnalyzingGap}
+            />
           </div>
         )}
 
@@ -545,26 +804,6 @@ export default function App() {
             )}
           </div>
         )}
-
-        {/* Action Button Section Placeholder */}
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <button
-            disabled={!extractionResult || !jobDescription.trim()}
-            className={`group relative inline-flex items-center justify-center px-8 py-4 text-base font-bold rounded-2xl shadow-xl transition-all ${
-              extractionResult && jobDescription.trim()
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-cyan-500/25 cursor-pointer'
-                : 'bg-slate-900/80 text-slate-500 border border-slate-800 cursor-not-allowed'
-            }`}
-          >
-            <Sparkles className="w-5 h-5 mr-2 text-cyan-400" />
-            <span>Analyze Resume-to-JD Gap</span>
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </button>
-          <p className="text-xs text-slate-500 flex items-center space-x-1">
-            <Cpu className="w-3.5 h-3.5 text-cyan-500" />
-            <span>Phase 4 complete: Structured JD requirement analysis active. Resume-to-JD Gap Engine coming next.</span>
-          </p>
-        </div>
       </main>
 
       {/* Footer */}

@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, File, UploadFile, HTTPException, status
+from app.schemas.pdf import PDFExtractionResponse
 from app.schemas.jd import JDAnalyzeRequest, JobDescription
+from app.services.pdf_parser import extract_text_from_pdf, PDFParsingError
 from app.services.jd_parser import default_jd_parser
 from app.services.llm_service import (
     LLMKeyMissingError,
@@ -9,6 +11,45 @@ from app.services.llm_service import (
 )
 
 router = APIRouter()
+
+
+@router.post(
+    "/jd/extract",
+    response_model=PDFExtractionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Extract page-by-page text from a Job Description PDF",
+    description="Accepts a JD PDF upload, extracts text page-by-page in-memory using PyMuPDF, and returns structured page extractions."
+)
+async def extract_jd_pdf(file: UploadFile = File(...)) -> PDFExtractionResponse:
+    file_name = file.filename or "job_description.pdf"
+
+    # Check extension
+    if not file_name.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported file format. Only PDF files (.pdf) are accepted."
+        )
+
+    # Check content type if provided
+    if file.content_type and file.content_type not in ["application/pdf", "application/x-pdf", "application/octet-stream"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid MIME type '{file.content_type}'. Only PDF documents are allowed."
+        )
+
+    try:
+        content = await file.read()
+        return extract_text_from_pdf(file_bytes=content, file_name=file_name)
+    except PDFParsingError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while processing the JD PDF: {str(e)}"
+        )
 
 
 @router.post(
