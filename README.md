@@ -4,6 +4,11 @@ An intelligent, explainable, and deterministic application designed to evaluate 
 
 
 ---
+## 🌐 Live Demo
+
+👉 [**Try the Resume-to-JD Gap Analyzer**](https://resume-to-jd-gap-analyzer.vercel.app/)
+
+---
 
 ## ✨ Features
 
