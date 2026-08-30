@@ -2,11 +2,6 @@
 
 An intelligent, explainable, and deterministic application designed to evaluate candidate resumes against Job Descriptions (JDs). Unlike generic LLM matchers that produce non-deterministic scores and hallucinated feedback, this platform pairs rule-based skill normalization and mathematically transparent weighted scoring with a Retrieval-Augmented Generation (RAG) engine that guarantees 100% grounded, traceable upskilling recommendations.
 
----
-
-## 🚀 Live Demo
-
-> 📹 **Demo Video Walkthrough**: *(Recording preview coming soon. Explore the full UI flow in the [Application Preview](#-application-preview) section below or run locally via [Setup](#️-setup).)
 
 ---
 
