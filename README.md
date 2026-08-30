@@ -6,7 +6,7 @@ An intelligent, explainable, and deterministic application designed to evaluate 
 
 ## 🚀 Live Demo
 
-> 📹 **Demo Video Walkthrough**: *(Recording preview coming soon. Explore the full UI flow in the [Application Preview](#-application-preview) section below or run locally via [Setup](#️-setup).)* <video controls src="Recording 2026-08-30 123033.mp4" title="Title"></video>
+> 📹 **Demo Video Walkthrough**: *(Recording preview coming soon. Explore the full UI flow in the [Application Preview](#-application-preview) section below or run locally via [Setup](#️-setup).)
 
 ---
 
