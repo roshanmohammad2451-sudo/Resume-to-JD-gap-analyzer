@@ -72,20 +72,20 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
     switch (priority) {
       case 'high':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-950 text-rose-300 border border-rose-800">
-            High Priority (Missing Required)
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-rose-500/15 text-rose-300 border border-rose-500/30">
+            High Priority (Required)
           </span>
         );
       case 'medium':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-950 text-amber-300 border border-amber-800">
-            Medium Priority (Partial Gap)
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
+            Medium Priority (Partial)
           </span>
         );
       case 'low':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-purple-950 text-purple-300 border border-purple-800">
-            Low Priority (Preferred Skill)
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase bg-purple-500/10 text-purple-300 border border-purple-500/20">
+            Low Priority (Preferred)
           </span>
         );
     }
@@ -95,24 +95,25 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
   const insufficientList = recommendationsData?.recommendations.filter(r => r.grounding_status === 'insufficient_evidence') || [];
 
   return (
-    <div className="rounded-2xl bg-slate-950/90 border border-slate-800 shadow-2xl p-6 sm:p-8 space-y-6 animate-in fade-in duration-500">
+    <div className="rounded-2xl bg-[#0c0d12]/90 border border-white/[0.08] shadow-raycast-card p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-white/[0.08] gap-4">
         <div>
-          <div className="flex items-center space-x-2.5 mb-1">
-            <div className="p-2 rounded-xl bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
-              <Sparkles className="w-5 h-5 text-cyan-400" />
+          <div className="flex items-center space-x-3 mb-1">
+            <div className="p-2 rounded-xl bg-white/[0.04] text-rose-400 border border-white/[0.08] shadow-inner">
+              <Sparkles className="w-5 h-5 text-rose-400" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-xl font-extrabold text-white tracking-tight">
+              <div className="flex items-center space-x-2.5 flex-wrap">
+                <h3 className="text-xl font-bold text-white tracking-tight">
                   Phase 7: RAG-Grounded Learning Recommendations
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px] font-bold uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-medium uppercase inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   Anti-Hallucination Active
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Curated Knowledge Base • Semantic Retrieval • Strict Deterministic Grounding Validation
               </p>
             </div>
@@ -125,25 +126,25 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
             type="button"
             onClick={handleGenerate}
             disabled={isLoading}
-            className={`inline-flex items-center px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg select-none ${
+            className={`inline-flex items-center px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm select-none cursor-pointer ${
               isLoading
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white cursor-pointer shadow-cyan-600/20 hover:scale-[1.02]'
+                ? 'bg-white/[0.04] text-zinc-500 cursor-not-allowed border border-white/[0.08]'
+                : 'bg-white text-black hover:bg-zinc-200 shadow-md hover:scale-[1.02]'
             }`}
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin text-cyan-400" />
-                <span>Retrieving & Validating Recommendations...</span>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin text-zinc-400" />
+                <span>Retrieving & Validating...</span>
               </>
             ) : recommendationsData ? (
               <>
-                <ShieldCheck className="w-4 h-4 mr-1.5 text-cyan-300" />
+                <ShieldCheck className="w-4 h-4 mr-1.5 text-black" />
                 <span>Re-generate Grounded Recommendations</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 mr-1.5 text-cyan-300" />
+                <Sparkles className="w-4 h-4 mr-1.5 text-black" />
                 <span>Generate Grounded Recommendations</span>
               </>
             )}
@@ -153,20 +154,20 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
 
       {/* Initial Empty State / Call to Action */}
       {!recommendationsData && !isLoading && !error && (
-        <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-dashed border-slate-800 space-y-3">
-          <div className="p-3 rounded-full bg-slate-900 border border-slate-800 w-12 h-12 mx-auto flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-cyan-400" />
+        <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.08] space-y-3">
+          <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] w-12 h-12 mx-auto flex items-center justify-center shadow-inner">
+            <BookOpen className="w-6 h-6 text-zinc-300" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h4 className="text-sm font-bold text-white">Generate Verified Recommendations</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h4 className="text-sm font-semibold text-white tracking-tight">Generate Verified Recommendations</h4>
+            <p className="text-xs text-zinc-400 leading-relaxed">
               Retrieve curated learning materials from our controlled local knowledge base for your identified skill gaps. The deterministic grounding validator verifies every claim before display.
             </p>
           </div>
           <button
             type="button"
             onClick={handleGenerate}
-            className="px-4 py-2 rounded-lg bg-cyan-600/80 hover:bg-cyan-600 text-white text-xs font-semibold shadow-md transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/[0.12] text-xs font-medium shadow-sm transition-all cursor-pointer"
           >
             Retrieve Grounded Recommendations
           </button>
@@ -175,10 +176,10 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
 
       {/* Error Alert */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-start space-x-3">
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start space-x-3">
           <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold text-sm block mb-1">Recommendation Generation Error</span>
+            <span className="font-semibold text-sm block mb-1">Recommendation Generation Error</span>
             <span>{error}</span>
           </div>
         </div>
@@ -189,36 +190,36 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
         <div className="space-y-6">
           {/* Statistical Pills Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-between">
               <div>
-                <span className="text-lg font-bold text-emerald-400 block">{groundedList.length}</span>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Verified Grounded</span>
+                <span className="text-xl font-bold text-emerald-400 block">{groundedList.length}</span>
+                <span className="text-[10px] uppercase font-mono font-medium text-zinc-400 tracking-wider">Verified Grounded</span>
               </div>
-              <ShieldCheck className="w-6 h-6 text-emerald-400/60" />
+              <ShieldCheck className="w-6 h-6 text-emerald-400/50" />
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] flex items-center justify-between">
               <div>
-                <span className="text-lg font-bold text-slate-200 block">{insufficientList.length}</span>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Insufficient KB Evidence</span>
+                <span className="text-xl font-bold text-zinc-200 block">{insufficientList.length}</span>
+                <span className="text-[10px] uppercase font-mono font-medium text-zinc-400 tracking-wider">Insufficient KB Evidence</span>
               </div>
-              <AlertTriangle className="w-6 h-6 text-amber-400/60" />
+              <AlertTriangle className="w-6 h-6 text-amber-400/50" />
             </div>
 
-            <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-900/60 flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] flex items-center justify-between">
               <div>
-                <span className="text-lg font-bold text-cyan-400 block">100%</span>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Hallucination Rejection Rate</span>
+                <span className="text-xl font-bold text-white block">100%</span>
+                <span className="text-[10px] uppercase font-mono font-medium text-zinc-400 tracking-wider">Hallucination Rejection Rate</span>
               </div>
-              <Award className="w-6 h-6 text-cyan-400/60" />
+              <Award className="w-6 h-6 text-zinc-400" />
             </div>
           </div>
 
           {/* Section: Grounded & Verified Recommendations */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 pb-2 border-b border-slate-800">
+            <div className="flex items-center space-x-2 pb-2 border-b border-white/[0.08]">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
                 Grounded Recommendations ({groundedList.length})
               </h4>
             </div>
@@ -230,16 +231,16 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
                   return (
                     <div 
                       key={idx}
-                      className="rounded-xl bg-slate-900/80 border border-emerald-900/40 hover:border-emerald-700/60 transition-all p-5 space-y-4 shadow-lg"
+                      className="rounded-2xl bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.16] transition-all p-5 space-y-4 shadow-sm"
                     >
                       {/* Top Skill & Priority Row */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                         <div className="flex items-center space-x-2.5">
-                          <div className="p-1.5 rounded-lg bg-emerald-950 border border-emerald-800 text-emerald-400">
+                          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                             <ShieldCheck className="w-4 h-4" />
                           </div>
                           <div>
-                            <span className="text-base font-bold text-white capitalize">
+                            <span className="text-base font-semibold text-white capitalize tracking-tight">
                               {rec.skill}
                             </span>
                           </div>
@@ -247,8 +248,8 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
                         </div>
 
                         <div className="flex items-center space-x-2 self-start sm:self-auto">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold uppercase">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-medium uppercase gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                             Verified Grounded
                           </span>
                         </div>
@@ -256,32 +257,32 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
 
                       {/* Recommendation Content */}
                       <div className="space-y-2">
-                        <div className="p-3 rounded-lg bg-slate-950 border border-slate-800/80">
-                          <span className="text-[10px] uppercase font-bold text-cyan-400 block mb-1">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06]">
+                          <span className="text-[10px] uppercase font-mono font-medium text-zinc-400 block mb-1">
                             Actionable Grounded Learning Recommendation
                           </span>
-                          <p className="text-xs text-slate-100 font-medium leading-relaxed">
+                          <p className="text-xs text-zinc-100 font-normal leading-relaxed">
                             {rec.recommendation}
                           </p>
                         </div>
 
                         {rec.rationale && (
-                          <div className="text-xs text-slate-400 pl-1">
-                            <strong className="text-slate-300 font-medium">Why it matters: </strong>
+                          <div className="text-xs text-zinc-400 pl-1">
+                            <strong className="text-zinc-300 font-medium">Why it matters: </strong>
                             <span>{rec.rationale}</span>
                           </div>
                         )}
                       </div>
 
                       {/* Traceability & Grounded Evidence Drawer */}
-                      <div className="pt-2 border-t border-slate-800/80">
+                      <div className="pt-2 border-t border-white/[0.06]">
                         <button
                           type="button"
                           onClick={() => toggleTraceability(idx)}
-                          className="flex items-center justify-between w-full text-xs font-semibold text-slate-400 hover:text-cyan-300 transition-colors select-none"
+                          className="flex items-center justify-between w-full text-xs font-medium text-zinc-400 hover:text-white transition-colors select-none cursor-pointer"
                         >
                           <span className="flex items-center space-x-1.5">
-                            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                            <FileText className="w-3.5 h-3.5 text-zinc-400" />
                             <span>Traceability & Retrieved Evidence ({rec.source_ids.length} Source{rec.source_ids.length > 1 ? 's' : ''})</span>
                           </span>
                           <div className="flex items-center space-x-1 text-[11px]">
@@ -291,14 +292,14 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
                         </button>
 
                         {isExpanded && (
-                          <div className="mt-3 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3 animate-in fade-in duration-200">
+                          <div className="mt-3 p-4 rounded-xl bg-black/50 border border-white/[0.08] space-y-3 animate-in fade-in duration-150">
                             {/* Source IDs */}
                             <div className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className="text-slate-500 font-medium">Knowledge Base Documents:</span>
+                              <span className="text-zinc-500 font-medium">Knowledge Base Documents:</span>
                               {rec.source_ids.map((sid, sIdx) => (
                                 <span 
                                   key={sIdx}
-                                  className="px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 font-mono text-[10px] font-semibold"
+                                  className="px-2 py-0.5 rounded-md bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-mono text-[10px]"
                                 >
                                   {sid}
                                 </span>
@@ -307,11 +308,11 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
 
                             {/* Deterministic Checks Passed */}
                             {rec.validation_details?.checks && (
-                              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                              <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-1">
+                                <span className="text-[10px] uppercase font-mono font-medium text-zinc-400 block mb-1">
                                   Deterministic Grounding Checks (100% Passed)
                                 </span>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-300">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-zinc-300">
                                   <div className="flex items-center space-x-1.5">
                                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                                     <span>Target skill explicitly referenced</span>
@@ -335,11 +336,11 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
                             {/* Verbatim Retrieved Chunks */}
                             {rec.evidence.length > 0 && (
                               <div className="space-y-1.5">
-                                <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                                <span className="text-[10px] uppercase font-mono font-medium text-zinc-500 block">
                                   Supporting Knowledge Base Excerpts
                                 </span>
                                 {rec.evidence.map((ev, eIdx) => (
-                                  <p key={eIdx} className="text-[11px] text-slate-300 italic bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80 leading-relaxed">
+                                  <p key={eIdx} className="text-[11px] text-zinc-300 italic bg-white/[0.02] p-2.5 rounded-lg border border-white/[0.06] leading-relaxed">
                                     "{ev}"
                                   </p>
                                 ))}
@@ -353,8 +354,8 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
                 })}
               </div>
             ) : (
-              <div className="p-6 rounded-xl bg-slate-900/40 border border-dashed border-slate-800 text-center">
-                <p className="text-xs text-slate-400 italic">
+              <div className="p-6 rounded-xl bg-white/[0.02] border border-dashed border-white/[0.08] text-center">
+                <p className="text-xs text-zinc-400 italic">
                   No verified recommendations were generated. All identified gaps may lack curated knowledge chunks.
                 </p>
               </div>
@@ -363,35 +364,35 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
 
           {/* Section: Insufficient Grounded Evidence (Zero Hallucination Proof) */}
           {insufficientList.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-slate-800">
-              <div className="flex items-center justify-between pb-2 border-b border-amber-900/30">
+            <div className="space-y-3 pt-4 border-t border-white/[0.08]">
+              <div className="flex items-center justify-between pb-2 border-b border-amber-500/20">
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                  <h4 className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
                     Gaps With Insufficient Curated Evidence ({insufficientList.length})
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-800">
+                <span className="text-[10px] font-medium text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                   Hallucination Suppressed
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-2">
-                <p className="text-xs text-slate-300 leading-relaxed">
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                <p className="text-xs text-zinc-300 leading-relaxed">
                   The system <strong>refuses to hallucinate</strong> recommendations for the following skills because they do not have sufficient reference documents in our controlled knowledge base:
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {insufficientList.map((item, idx) => (
                     <span 
                       key={idx}
-                      className="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 text-xs font-mono inline-flex items-center"
+                      className="px-2.5 py-1 rounded-lg bg-black/40 text-zinc-300 border border-white/[0.08] text-xs font-mono inline-flex items-center"
                     >
                       <Tag className="w-3 h-3 mr-1 text-amber-400" />
                       {item.skill}
                     </span>
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-500 italic pt-1">
+                <p className="text-[11px] text-zinc-500 italic pt-1">
                   In accordance with Phase 7 requirements, arbitrary web scraping and unverified external claims are strictly banned.
                 </p>
               </div>
@@ -402,3 +403,4 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
     </div>
   );
 };
+

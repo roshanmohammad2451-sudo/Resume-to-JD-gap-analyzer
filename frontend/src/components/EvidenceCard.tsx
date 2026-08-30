@@ -22,30 +22,30 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
   const hasResumeEvidence = Boolean(resumeEvidence && resumeEvidence.trim());
 
   return (
-    <div className="rounded-xl bg-slate-950/70 border border-slate-800/80 p-3.5 sm:p-4 space-y-3 text-xs">
+    <div className="rounded-xl bg-[#090a0e]/90 border border-white/[0.08] p-3.5 sm:p-4 space-y-3 text-xs">
       {/* Optional Top Explanation / Rationale */}
       {explanation && (
-        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 text-slate-300 flex items-start space-x-2">
-          <Quote className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] leading-relaxed italic text-slate-300">
+        <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-zinc-300 flex items-start space-x-2.5">
+          <Quote className="w-3.5 h-3.5 text-zinc-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-relaxed italic text-zinc-300">
             {explanation}
           </p>
         </div>
       )}
 
       {/* Side-by-side Grounded Evidence Columns */}
-      <div className={`grid grid-cols-1 ${compact ? 'gap-2.5' : 'md:grid-cols-2 gap-3.5'}`}>
+      <div className={`grid grid-cols-1 ${compact ? 'gap-2.5' : 'md:grid-cols-2 gap-3'}`}>
         {/* Job Description Evidence Column */}
-        <div className="rounded-lg bg-slate-900/90 border border-slate-800 p-3 flex flex-col justify-between space-y-2">
-          <div className="flex items-center space-x-1.5 pb-1.5 border-b border-slate-800 text-[11px] font-semibold text-blue-400">
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 flex flex-col justify-between space-y-2">
+          <div className="flex items-center space-x-1.5 pb-1.5 border-b border-white/[0.06] text-[11px] font-medium text-sky-400">
             <Briefcase className="w-3.5 h-3.5" />
-            <span>Job Description Evidence</span>
+            <span className="tracking-tight">Job Description Requirement</span>
           </div>
 
           {jdWording && (
-            <div className="text-[11px]">
-              <span className="text-slate-500 font-medium mr-1">Specified Wording:</span>
-              <span className="font-mono text-slate-200 bg-slate-800/80 px-1.5 py-0.5 rounded">
+            <div className="text-[11px] flex items-center gap-1.5 flex-wrap">
+              <span className="text-zinc-500 font-medium">Specified:</span>
+              <span className="font-mono text-zinc-200 bg-white/[0.06] px-1.5 py-0.5 rounded text-[10px] border border-white/[0.08]">
                 "{jdWording}"
               </span>
             </div>
@@ -53,29 +53,29 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
 
           <div className="min-h-[2rem]">
             {hasJdEvidence ? (
-              <p className="text-[11px] text-slate-300 leading-relaxed font-sans italic border-l-2 border-blue-500/40 pl-2">
+              <p className="text-[11px] text-zinc-300 leading-relaxed font-sans italic border-l-2 border-sky-500/40 pl-2">
                 "{jdEvidence}"
               </p>
             ) : (
-              <div className="flex items-center text-[11px] text-slate-500 italic space-x-1">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                <span>No specific JD excerpt found</span>
+              <div className="flex items-center text-[11px] text-zinc-500 italic space-x-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+                <span>No specific JD excerpt identified</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Candidate Resume Evidence Column */}
-        <div className="rounded-lg bg-slate-900/90 border border-slate-800 p-3 flex flex-col justify-between space-y-2">
-          <div className="flex items-center space-x-1.5 pb-1.5 border-b border-slate-800 text-[11px] font-semibold text-cyan-400">
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 flex flex-col justify-between space-y-2">
+          <div className="flex items-center space-x-1.5 pb-1.5 border-b border-white/[0.06] text-[11px] font-medium text-emerald-400">
             <FileText className="w-3.5 h-3.5" />
-            <span>Candidate Resume Evidence</span>
+            <span className="tracking-tight">Candidate Resume Match</span>
           </div>
 
           {resumeWording && (
-            <div className="text-[11px]">
-              <span className="text-slate-500 font-medium mr-1">Resume Phrase:</span>
-              <span className="font-mono text-slate-200 bg-slate-800/80 px-1.5 py-0.5 rounded">
+            <div className="text-[11px] flex items-center gap-1.5 flex-wrap">
+              <span className="text-zinc-500 font-medium">Resume:</span>
+              <span className="font-mono text-zinc-200 bg-white/[0.06] px-1.5 py-0.5 rounded text-[10px] border border-white/[0.08]">
                 "{resumeWording}"
               </span>
             </div>
@@ -83,11 +83,11 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
 
           <div className="min-h-[2rem]">
             {hasResumeEvidence ? (
-              <p className="text-[11px] text-slate-300 leading-relaxed font-sans italic border-l-2 border-cyan-500/40 pl-2">
+              <p className="text-[11px] text-zinc-300 leading-relaxed font-sans italic border-l-2 border-emerald-500/40 pl-2">
                 "{resumeEvidence}"
               </p>
             ) : (
-              <div className="flex items-center text-[11px] text-rose-400/80 italic space-x-1.5 bg-rose-950/30 p-1.5 rounded border border-rose-900/30">
+              <div className="flex items-center text-[11px] text-rose-400/90 italic space-x-1.5 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 <span>No supporting evidence found in candidate resume</span>
               </div>
@@ -98,3 +98,4 @@ export const EvidenceCard: React.FC<EvidenceCardProps> = ({
     </div>
   );
 };
+

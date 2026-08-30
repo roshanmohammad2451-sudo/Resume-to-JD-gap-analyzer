@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, FileText, Loader2, X, RefreshCw } from 'lucide-react';
 
 export const formatFileSize = (bytes: number): string => {
@@ -41,15 +41,31 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const dragCounter = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
 
   const isCyan = accentColor === 'cyan';
   const activeBorderClass = isCyan
-    ? 'border-cyan-400 bg-cyan-950/40 ring-4 ring-cyan-500/20 scale-[1.01]'
-    : 'border-blue-400 bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.01]';
+    ? 'border-cyan-400 bg-cyan-950/30 ring-2 ring-cyan-500/20 scale-[1.008]'
+    : 'border-blue-400 bg-blue-950/30 ring-2 ring-blue-500/20 scale-[1.008]';
   const iconColorClass = isCyan ? 'text-cyan-400' : 'text-blue-400';
-  const buttonClass = isCyan
-    ? 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-600/20'
-    : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20';
+
+  // Prevent default browser drag/drop behavior on window to prevent opening files in new tab
+  useEffect(() => {
+    const handleGlobalDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleGlobalDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('dragover', handleGlobalDragOver);
+    window.addEventListener('drop', handleGlobalDrop);
+
+    return () => {
+      window.removeEventListener('dragover', handleGlobalDragOver);
+      window.removeEventListener('drop', handleGlobalDrop);
+    };
+  }, []);
 
   const validateAndProcessFile = (file: File) => {
     // 1. Validate PDF format
@@ -82,16 +98,23 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
     if (disabled || isLoading) return;
 
     dragCounter.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragOver(true);
-    }
+    setIsDragOver(true);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (disabled || isLoading) return;
-    e.dataTransfer.dropEffect = 'copy';
+
+    try {
+      e.dataTransfer.dropEffect = 'copy';
+    } catch {
+      // Fallback for strict browser security policies
+    }
+
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
@@ -100,10 +123,21 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
     if (disabled || isLoading) return;
 
     dragCounter.current -= 1;
-    if (dragCounter.current <= 0) {
+    const currentTarget = e.currentTarget;
+    const relatedTarget = e.relatedTarget as Node | null;
+
+    // Only deactivate drag state if cursor completely leaves the dropzone container
+    if (!relatedTarget || !currentTarget.contains(relatedTarget) || dragCounter.current <= 0) {
       dragCounter.current = 0;
       setIsDragOver(false);
     }
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -114,21 +148,35 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
 
     if (disabled || isLoading) return;
 
-    const files = e.dataTransfer.files;
-    if (!files || files.length === 0) return;
+    let fileToProcess: File | null = null;
 
-    if (files.length > 1) {
-      onError?.('Please drop exactly one PDF file at a time.');
+    // First try dataTransfer.files
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (e.dataTransfer.files.length > 1) {
+        onError?.('Please drop exactly one PDF file at a time.');
+        return;
+      }
+      fileToProcess = e.dataTransfer.files[0];
+    } else if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      // Fallback to dataTransfer.items
+      const item = e.dataTransfer.items[0];
+      if (item.kind === 'file') {
+        fileToProcess = item.getAsFile();
+      }
+    }
+
+    if (!fileToProcess) {
+      onError?.('No readable file was detected in the drop event.');
       return;
     }
 
-    validateAndProcessFile(files[0]);
+    validateAndProcessFile(fileToProcess);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       validateAndProcessFile(e.target.files[0]);
-      // Reset input value so re-selecting same file works
+      // Reset input value so re-selecting the exact same file triggers onChange
       e.target.value = '';
     }
   };
@@ -140,8 +188,15 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
     }
   };
 
+  const handleContainerClick = () => {
+    if (!isLoading && !disabled && !currentFile) {
+      fileInputRef.current?.click();
+    }
+  };
+
   return (
     <div
+      ref={dropzoneRef}
       role="region"
       aria-label={label}
       tabIndex={disabled || isLoading ? -1 : 0}
@@ -149,17 +204,14 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
+      onDragEnd={handleDragEnd}
       onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-xl p-6 text-center transition-all relative outline-none select-none ${
+      onClick={handleContainerClick}
+      className={`border border-dashed rounded-2xl p-6 text-center transition-all duration-200 relative outline-none select-none ${
         isDragOver
           ? activeBorderClass
-          : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 focus-visible:ring-2 focus-visible:ring-cyan-500/50'
+          : 'border-white/[0.12] hover:border-white/[0.24] bg-white/[0.02] hover:bg-white/[0.035] focus-visible:ring-2 focus-visible:ring-white/20'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      onClick={() => {
-        if (!isLoading && !disabled) {
-          fileInputRef.current?.click();
-        }
-      }}
     >
       <input
         ref={fileInputRef}
@@ -171,45 +223,53 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
         onChange={handleInputChange}
       />
 
-      {isLoading ? (
-        <div className="py-8 flex flex-col items-center justify-center space-y-3 pointer-events-none">
-          <Loader2 className={`w-8 h-8 ${iconColorClass} animate-spin`} />
-          <p className="text-sm font-medium text-slate-300">{loadingText}</p>
-        </div>
-      ) : isDragOver ? (
-        <div className="py-8 flex flex-col items-center justify-center space-y-2 pointer-events-none animate-in fade-in duration-200">
-          <div className="p-3 rounded-full bg-slate-800/90 text-white mb-1 shadow-lg">
-            <UploadCloud className={`w-9 h-9 ${iconColorClass} animate-bounce`} />
+      {/* Visual Drag-Over Overlay (renders with pointer-events-none so it doesn't cause fake dragleave) */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-20 rounded-2xl flex flex-col items-center justify-center space-y-2 pointer-events-none bg-[#0c0d12]/95 border-2 border-dashed border-cyan-400 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="p-3.5 rounded-2xl bg-white/[0.08] border border-white/[0.15] text-white shadow-2xl mb-1">
+            <UploadCloud className={`w-7 h-7 ${iconColorClass} animate-bounce`} />
           </div>
-          <p className={`text-base font-bold ${isCyan ? 'text-cyan-300' : 'text-blue-300'}`}>
+          <p className="text-sm font-semibold text-white tracking-tight">
             Drop PDF File Here
           </p>
-          <p className="text-xs text-slate-400">Release to start instant text extraction</p>
+          <p className="text-xs text-zinc-400">Release to start instant text extraction</p>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="py-8 flex flex-col items-center justify-center space-y-3 pointer-events-none">
+          <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] shadow-inner">
+            <Loader2 className={`w-6 h-6 ${iconColorClass} animate-spin`} />
+          </div>
+          <p className="text-xs font-medium text-zinc-300 tracking-tight">{loadingText}</p>
         </div>
       ) : currentFile ? (
         <div 
-          className="flex flex-col items-center justify-center min-h-[140px] space-y-3"
+          className="flex flex-col items-center justify-center min-h-[140px] space-y-3.5"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-3 rounded-full bg-slate-800/80 text-slate-400 mb-1">
-            <FileText className={`w-8 h-8 ${iconColorClass}`} />
+          <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-zinc-400 shadow-inner">
+            <FileText className={`w-7 h-7 ${iconColorClass}`} />
           </div>
           <div className="text-center max-w-full px-4">
-            <p className="text-sm font-bold text-slate-200 truncate max-w-xs sm:max-w-md mx-auto" title={currentFile.name}>
+            <p className="text-sm font-semibold text-zinc-100 truncate max-w-xs sm:max-w-md mx-auto tracking-tight" title={currentFile.name}>
               {currentFile.name}
             </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {formatFileSize(currentFile.size)} • PDF Document
-            </p>
+            <div className="flex items-center justify-center space-x-2 mt-1">
+              <span className="text-[11px] font-mono text-zinc-400 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+                {formatFileSize(currentFile.size)}
+              </span>
+              <span className="text-[11px] text-zinc-500 font-medium">• PDF Document</span>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 pt-2">
+          <div className="flex items-center space-x-2 pt-1">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all shadow-md inline-flex items-center ${buttonClass}`}
+              className="px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-200 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] transition-all shadow-sm inline-flex items-center cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-zinc-400" />
               Change PDF
             </button>
 
@@ -220,37 +280,43 @@ export const PDFDropzone: React.FC<PDFDropzoneProps> = ({
                   e.stopPropagation();
                   onClear();
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-rose-300 hover:bg-rose-950/50 border border-slate-800 hover:border-rose-800 transition-all inline-flex items-center"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all inline-flex items-center cursor-pointer"
               >
-                <X className="w-3.5 h-3.5 mr-1" />
+                <X className="w-3.5 h-3.5 mr-1 text-rose-400" />
                 Remove
               </button>
             )}
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center min-h-[140px] pointer-events-none">
-          <div className="p-3 rounded-full bg-slate-800/80 text-slate-400 mb-3">
-            <UploadCloud className={`w-8 h-8 ${iconColorClass}`} />
+        <div className="flex flex-col items-center justify-center min-h-[140px] space-y-2 pointer-events-none">
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-zinc-400 mb-1 shadow-inner group-hover:border-white/[0.16] transition-colors">
+            <UploadCloud className={`w-7 h-7 ${iconColorClass}`} />
           </div>
-          <p className="text-sm font-medium text-slate-200 mb-1">
-            {label}
-          </p>
-          <p className="text-xs text-slate-500 mb-4">
-            {sublabel}
-          </p>
-          <button
-            type="button"
-            className={`pointer-events-auto px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all shadow-lg ${buttonClass}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              fileInputRef.current?.click();
-            }}
-          >
-            Select PDF File
-          </button>
+          <div>
+            <p className="text-sm font-semibold text-zinc-200 tracking-tight">
+              {label}
+            </p>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {sublabel}
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              className="pointer-events-auto px-4 py-2 rounded-xl text-xs font-medium text-white bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] transition-all shadow-sm cursor-pointer hover:scale-[1.02]"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+            >
+              Select PDF File
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 };
+
+

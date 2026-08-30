@@ -62,7 +62,7 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
   }), [gapResult]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* 1. Overall Match Score Prominent Card */}
       <MatchScoreCard 
         score={gapResult.overall_match_score} 
@@ -80,17 +80,19 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
       />
 
       {/* Main Results Container */}
-      <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-8">
+      <div className="rounded-2xl bg-[#0c0d12]/95 border border-white/[0.08] p-6 sm:p-8 shadow-raycast-card space-y-8">
         {/* Section Header with Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.08] gap-3">
           <div>
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-cyan-400" />
+            <div className="flex items-center space-x-2.5">
+              <div className="p-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-inner text-white">
+                <Sparkles className="w-4 h-4" />
+              </div>
               <h3 className="text-xl font-bold text-white tracking-tight">
                 Skill Gap & Evidence Breakdown
               </h3>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-zinc-400 mt-1">
               Grounded, deterministic evaluation of requirements without non-deterministic AI variance
             </p>
           </div>
@@ -99,15 +101,15 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
             <button
               onClick={onRetry}
               disabled={isReanalyzing}
-              className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto"
+              className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 hover:text-white border border-white/[0.1] text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed self-start sm:self-auto cursor-pointer"
             >
-              <RotateCcw className={`w-3.5 h-3.5 mr-1.5 text-cyan-400 ${isReanalyzing ? 'animate-spin' : ''}`} />
+              <RotateCcw className={`w-3.5 h-3.5 mr-1.5 text-zinc-400 ${isReanalyzing ? 'animate-spin' : ''}`} />
               <span>Re-run Gap Engine</span>
             </button>
           )}
         </div>
 
-        {/* 10. Filter & View Controls */}
+        {/* Filter & View Controls */}
         <SkillFilterTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -121,21 +123,21 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
           {/* Section: MISSING REQUIRED SKILLS (Highest Priority) */}
           {(activeTab === 'all' || activeTab === 'missing_required') && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-rose-900/30">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-500/20">
                 <div className="flex items-center space-x-2">
-                  <div className="p-1 rounded bg-rose-950 text-rose-400 border border-rose-800/80">
+                  <div className="p-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
                     <XCircle className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-rose-300 uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold text-rose-300 uppercase tracking-wider">
                       Missing Required Skills ({gapResult.missing_required_skills.length})
                     </h4>
-                    <span className="text-[11px] text-rose-400/80 font-medium">
+                    <span className="text-[11px] text-rose-400/80 font-normal">
                       High Priority • Essential role requirements absent from candidate resume
                     </span>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-bold">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
                   Critical Gaps
                 </span>
               </div>
@@ -147,13 +149,13 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl bg-emerald-950/20 border border-emerald-900/40 text-center space-y-1">
+                <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-center space-y-1">
                   <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
-                  <p className="text-xs font-semibold text-emerald-300">
+                  <p className="text-xs font-medium text-emerald-300">
                     {searchQuery ? 'No matching missing required skills for this search.' : 'Outstanding! Zero missing required skills identified.'}
                   </p>
                   {!searchQuery && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-zinc-400">
                       The candidate resume covers all mandatory skills specified in the Job Description.
                     </p>
                   )}
@@ -165,21 +167,21 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
           {/* Section: PARTIAL MATCHES */}
           {(activeTab === 'all' || activeTab === 'partial') && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-amber-900/30">
+              <div className="flex items-center justify-between pb-2 border-b border-amber-500/20">
                 <div className="flex items-center space-x-2">
-                  <div className="p-1 rounded bg-amber-950 text-amber-400 border border-amber-800/80">
+                  <div className="p-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-amber-300 uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold text-amber-300 uppercase tracking-wider">
                       Partially Matched Skills ({gapResult.partial_matches.length})
                     </h4>
-                    <span className="text-[11px] text-amber-400/80 font-medium">
+                    <span className="text-[11px] text-amber-400/80 font-normal">
                       Related technologies or partial keyword overlap detected
                     </span>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-medium">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
                   Needs Review
                 </span>
               </div>
@@ -191,8 +193,8 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl bg-slate-900/40 border border-dashed border-slate-800 text-center">
-                  <p className="text-xs text-slate-400 italic">
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.08] text-center">
+                  <p className="text-xs text-zinc-400 italic">
                     {searchQuery ? 'No partial matches found for this search.' : 'No partial skill matches detected.'}
                   </p>
                 </div>
@@ -203,21 +205,21 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
           {/* Section: FULLY MATCHED SKILLS */}
           {(activeTab === 'all' || activeTab === 'matched') && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-emerald-900/30">
+              <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
                 <div className="flex items-center space-x-2">
-                  <div className="p-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+                  <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-emerald-300 uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">
                       Fully Matched Skills ({gapResult.matched_skills.length})
                     </h4>
-                    <span className="text-[11px] text-emerald-400/80 font-medium">
+                    <span className="text-[11px] text-emerald-400/80 font-normal">
                       Exact or canonical equivalence confirmed with supporting evidence
                     </span>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-medium">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium">
                   Verified Skills
                 </span>
               </div>
@@ -229,8 +231,8 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl bg-slate-900/40 border border-dashed border-slate-800 text-center">
-                  <p className="text-xs text-slate-400 italic">
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.08] text-center">
+                  <p className="text-xs text-zinc-400 italic">
                     {searchQuery ? 'No matched skills found for this search.' : 'No fully matched skills detected in resume.'}
                   </p>
                 </div>
@@ -241,21 +243,21 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
           {/* Section: MISSING PREFERRED SKILLS (Lower Priority) */}
           {(activeTab === 'all' || activeTab === 'missing_preferred') && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-purple-900/30">
+              <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
                 <div className="flex items-center space-x-2">
-                  <div className="p-1 rounded bg-purple-950 text-purple-400 border border-purple-800/80">
+                  <div className="p-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
                     <Star className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-purple-300 uppercase tracking-wider">
+                    <h4 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">
                       Missing Preferred Skills ({gapResult.missing_preferred_skills.length})
                     </h4>
-                    <span className="text-[11px] text-purple-400/80 font-medium">
+                    <span className="text-[11px] text-purple-400/80 font-normal">
                       Secondary • Nice-to-have / bonus qualifications absent from resume
                     </span>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800 font-medium">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 font-medium">
                   Optional Gaps
                 </span>
               </div>
@@ -267,8 +269,8 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl bg-slate-900/40 border border-dashed border-slate-800 text-center">
-                  <p className="text-xs text-slate-400 italic">
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.08] text-center">
+                  <p className="text-xs text-zinc-400 italic">
                     {searchQuery ? 'No missing preferred skills found for this search.' : 'Zero missing preferred skills.'}
                   </p>
                 </div>
@@ -287,40 +289,40 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
         <GroundedRecommendations gapResult={gapResult} />
 
         {/* Deterministic Scoring Basis & Verification Footer */}
-        <div className="pt-4 border-t border-slate-800 space-y-3">
+        <div className="pt-4 border-t border-white/[0.08] space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-xs text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center space-x-2 text-xs text-zinc-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>Phase 5 Deterministic Gap Engine • Grounded Evidence Only</span>
             </div>
             <button
               type="button"
               onClick={() => setShowFormulaFooter(!showFormulaFooter)}
-              className="text-xs text-cyan-400 hover:text-cyan-300 inline-flex items-center font-medium"
+              className="text-xs text-zinc-400 hover:text-white inline-flex items-center font-medium transition-colors cursor-pointer"
             >
-              <HelpCircle className="w-3.5 h-3.5 mr-1" />
+              <HelpCircle className="w-3.5 h-3.5 mr-1 text-zinc-500" />
               <span>{showFormulaFooter ? 'Hide Formula' : 'Formula Documentation'}</span>
               {showFormulaFooter ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
             </button>
           </div>
 
           {showFormulaFooter && (
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/90 text-xs text-slate-300 space-y-2 animate-in fade-in duration-200">
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] text-xs text-zinc-300 space-y-2 animate-in fade-in duration-150">
               <p className="font-semibold text-white">Transparent Weighted Match Scoring Formula:</p>
-              <p className="text-slate-400 leading-relaxed">
+              <p className="text-zinc-400 leading-relaxed">
                 {gapResult.summary?.formula || '70% Required Skills Weight + 30% Preferred Skills Weight (100% Required if no Preferred skills present).'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px]">
-                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-slate-500 block">Required Skills Weight:</span>
-                  <span className="font-mono font-bold text-cyan-400">70% (0.70)</span>
+                <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.06]">
+                  <span className="text-zinc-500 block">Required Skills Weight:</span>
+                  <span className="font-mono font-bold text-zinc-200">70% (0.70)</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-slate-500 block">Preferred Skills Weight:</span>
-                  <span className="font-mono font-bold text-purple-400">30% (0.30)</span>
+                <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.06]">
+                  <span className="text-zinc-500 block">Preferred Skills Weight:</span>
+                  <span className="font-mono font-bold text-zinc-200">30% (0.30)</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                  <span className="text-slate-500 block">Match Status Values:</span>
+                <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.06]">
+                  <span className="text-zinc-500 block">Match Status Values:</span>
                   <span className="font-mono text-emerald-400">Full: 1.0</span> • <span className="font-mono text-amber-400">Part: 0.5</span> • <span className="font-mono text-rose-400">Miss: 0.0</span>
                 </div>
               </div>
@@ -331,3 +333,4 @@ export const GapDashboard: React.FC<GapDashboardProps> = ({
     </div>
   );
 };
+
