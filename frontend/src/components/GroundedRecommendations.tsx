@@ -17,6 +17,7 @@ import {
   GapAnalysisResponse, 
   RecommendationResponse 
 } from '../types/gap';
+import { getApiUrl } from '../config/api';
 
 interface GroundedRecommendationsProps {
   gapResult: GapAnalysisResponse;
@@ -33,7 +34,7 @@ export const GroundedRecommendations: React.FC<GroundedRecommendationsProps> = (
     setError(null);
 
     try {
-      const response = await fetch('/api/recommendations/analyze', {
+      const response = await fetch(getApiUrl('/api/recommendations/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

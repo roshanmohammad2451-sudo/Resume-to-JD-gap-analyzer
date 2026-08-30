@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://resume-to-jd-gap-analyzer.onrender.com/api/:path*"
+    }
+  ]
+}

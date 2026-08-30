@@ -24,6 +24,7 @@ import {
 } from './types/gap';
 import { GapDashboard } from './components/GapDashboard';
 import { PDFDropzone } from './components/PDFDropzone';
+import { getApiUrl } from './config/api';
 
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
@@ -66,7 +67,7 @@ export default function App() {
   useEffect(() => {
     const checkBackendHealth = async () => {
       try {
-        const response = await fetch('/api/health');
+        const response = await fetch(getApiUrl('/api/health'));
         if (response.ok) {
           const data = await response.json();
           if (data.status === 'ok') {
@@ -111,7 +112,7 @@ export default function App() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('/api/resume/extract', {
+      const response = await fetch(getApiUrl('/api/resume/extract'), {
         method: 'POST',
         body: formData,
       });
@@ -157,7 +158,7 @@ export default function App() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('/api/jd/extract', {
+      const response = await fetch(getApiUrl('/api/jd/extract'), {
         method: 'POST',
         body: formData,
       });
@@ -198,7 +199,7 @@ export default function App() {
     setIsAnalyzingJD(true);
 
     try {
-      const response = await fetch('/api/jd/analyze', {
+      const response = await fetch(getApiUrl('/api/jd/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: jobDescription }),
@@ -237,7 +238,7 @@ export default function App() {
       let currentResumeProfile = resumeProfile;
       if (!currentResumeProfile) {
         const fullResumeText = extractionResult.pages.map(p => p.text).join('\n');
-        const resumeRes = await fetch('/api/resume/analyze', {
+        const resumeRes = await fetch(getApiUrl('/api/resume/analyze'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: fullResumeText }),
@@ -255,7 +256,7 @@ export default function App() {
       // 2. Ensure structured JobDescription exists
       let currentJdResult = jdResult;
       if (!currentJdResult) {
-        const jdRes = await fetch('/api/jd/analyze', {
+        const jdRes = await fetch(getApiUrl('/api/jd/analyze'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: jobDescription }),
@@ -271,7 +272,7 @@ export default function App() {
       }
 
       // 3. Perform Deterministic Gap Analysis
-      const gapRes = await fetch('/api/gap/analyze', {
+      const gapRes = await fetch(getApiUrl('/api/gap/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
