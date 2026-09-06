@@ -70,12 +70,12 @@ async def analyze_resume(request: ResumeAnalyzeRequest) -> ResumeProfile:
     except LLMKeyMissingError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OpenAI API key is missing or not configured."
+            detail="Gemini API key is missing or not configured."
         )
     except LLMAPIError as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI service communication error: {str(e)}"
+            detail=f"Gemini service communication error: {str(e)}"
         )
     except (LLMParseError, LLMServiceError) as e:
         raise HTTPException(

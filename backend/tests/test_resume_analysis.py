@@ -311,14 +311,14 @@ def test_api_missing_key_status_code():
             json={"text": "John Doe developer resume"}
         )
         assert response.status_code == 500
-        assert "OpenAI API key is missing" in response.json()["detail"]
+        assert "Gemini API key is missing" in response.json()["detail"]
 
 
-def test_api_openai_api_error_status_code():
+def test_api_gemini_api_error_status_code():
     with patch("app.api.resume.default_resume_analyzer.analyze_resume_text", side_effect=LLMAPIError("Connection timeout")):
         response = client.post(
             "/api/resume/analyze",
             json={"text": "John Doe developer resume"}
         )
         assert response.status_code == 502
-        assert "OpenAI service communication error" in response.json()["detail"]
+        assert "Gemini service communication error" in response.json()["detail"]

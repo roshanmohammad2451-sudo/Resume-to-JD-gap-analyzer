@@ -30,7 +30,6 @@ class EmbeddingService:
         key = self.api_key.strip().lower()
         return not (key in [
             "your_gemini_api_key_here",
-            "your_openai_api_key_here",
             "your_api_key_here",
             "none",
             "",

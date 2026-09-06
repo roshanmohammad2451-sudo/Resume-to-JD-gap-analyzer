@@ -46,10 +46,8 @@ class LLMService:
         key = self.api_key.strip() if self.api_key else ""
         if not key or key.lower() in [
             "your_gemini_api_key_here",
-            "your_openai_api_key_here",
             "your_api_key_here", 
             "your-gemini-api-key",
-            "your-openai-api-key",
             "none"
         ] or key.startswith("your_"):
             raise LLMKeyMissingError("Gemini API key is missing or not configured.")

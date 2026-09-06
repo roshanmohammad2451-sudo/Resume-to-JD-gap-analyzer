@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
-    OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4o-mini"
     DATABASE_URL: Optional[str] = None
 
     # Phase 7: RAG and Retrieval Settings
