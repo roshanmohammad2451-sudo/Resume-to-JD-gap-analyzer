@@ -9,8 +9,13 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_FALLBACK_MODEL: Optional[str] = "gemini-2.0-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    GEMINI_MAX_RETRIES: int = 4
+    GEMINI_RETRY_INITIAL_DELAY: float = 1.0
+    GEMINI_RETRY_BACKOFF_FACTOR: float = 2.0
+    GEMINI_RETRY_JITTER: float = 0.5
     DATABASE_URL: Optional[str] = None
 
     # Phase 7: RAG and Retrieval Settings

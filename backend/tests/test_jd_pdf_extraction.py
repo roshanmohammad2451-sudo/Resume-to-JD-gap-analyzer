@@ -67,11 +67,14 @@ def test_extract_jd_corrupt_file():
     assert "Unsupported file type" in response.json()["detail"] or "valid PDF" in response.json()["detail"]
 
 
-def test_extracted_jd_text_passed_to_analyze(monkeypatch):
+def test_extracted_jd_text_passed_to_analyze():
     """
     Verifies that text extracted from a JD PDF can be cleanly fed
     into the POST /api/jd/analyze endpoint.
     """
+    from unittest.mock import AsyncMock, patch
+    from app.schemas.jd import JobDescription, JobSkill
+
     pdf_bytes = create_sample_pdf_bytes([
         "Role: Python Backend Developer\nRequirements: Python, FastAPI, PostgreSQL.\nResponsibilities: Build microservices."
     ])
@@ -84,10 +87,19 @@ def test_extracted_jd_text_passed_to_analyze(monkeypatch):
     combined_text = "\n".join(p["text"] for p in extracted_data["pages"])
     assert "Python Backend Developer" in combined_text
 
-    # Analyze request payload
-    analyze_payload = {"text": combined_text}
-    analyze_resp = client.post("/api/jd/analyze", json=analyze_payload)
-    assert analyze_resp.status_code == 200
-    jd_profile = analyze_resp.json()
-    assert "role" in jd_profile
-    assert len(jd_profile["required_skills"]) > 0
+    mock_jd = JobDescription(
+        role="Python Backend Developer",
+        required_skills=[
+            JobSkill(name="Python", evidence="Python required", importance="required", source_text="Requirements: Python")
+        ]
+    )
+
+    with patch("app.api.jd.default_jd_parser.analyze_jd_text", new_callable=AsyncMock) as mock_analyze:
+        mock_analyze.return_value = mock_jd
+        # Analyze request payload
+        analyze_payload = {"text": combined_text}
+        analyze_resp = client.post("/api/jd/analyze", json=analyze_payload)
+        assert analyze_resp.status_code == 200
+        jd_profile = analyze_resp.json()
+        assert "role" in jd_profile
+        assert len(jd_profile["required_skills"]) > 0

@@ -6,6 +6,9 @@ client = TestClient(app)
 
 
 def test_recommendations_api_end_to_end():
+    from unittest.mock import AsyncMock, patch
+    from app.services.recommendation_service import RawGeminiRecommendation
+
     gap_payload = {
         "gap_analysis": {
             "overall_match_score": 60.0,
@@ -54,9 +57,18 @@ def test_recommendations_api_end_to_end():
         "max_recommendations": 5
     }
 
-    response = client.post("/api/recommendations/analyze", json=gap_payload)
-    assert response.status_code == 200
-    data = response.json()
+    mock_rec = RawGeminiRecommendation(
+        recommendation="Author optimized Dockerfiles using multi-stage builds and run containers with Docker CLI.",
+        rationale="Based on Docker Containerization document KB-DOC-001, mastering Docker addresses container requirements.",
+        cited_concepts=["Dockerfiles", "multi-stage builds", "Docker CLI"],
+        cited_source_ids=["KB-DOC-001"],
+    )
+
+    with patch("app.services.recommendation_service.default_recommendation_service.llm_service.generate_structured_output", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = mock_rec
+        response = client.post("/api/recommendations/analyze", json=gap_payload)
+        assert response.status_code == 200
+        data = response.json()
 
     assert "recommendations" in data
     assert "summary" in data

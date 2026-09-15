@@ -28,13 +28,16 @@ class EmbeddingService:
         if self._api_disabled or not self.api_key:
             return False
         key = self.api_key.strip().lower()
-        return not (key in [
+        if key in [
             "your_gemini_api_key_here",
             "your_api_key_here",
+            "your-gemini-api-key",
             "none",
             "",
             "test"
-        ] or key.startswith("your_"))
+        ] or key.startswith("your_") or key.startswith("test_") or getattr(settings, "ENVIRONMENT", "") == "test":
+            return False
+        return True
 
     def get_deterministic_fallback_embedding(self, text: str, dim: int = EMBEDDING_DIM) -> List[float]:
         """

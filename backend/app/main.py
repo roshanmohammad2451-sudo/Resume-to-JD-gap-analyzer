@@ -3,17 +3,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import health, resume, jd, gap, recommendations
-from app.services.knowledge_service import default_knowledge_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Pre-index curated knowledge base
-    try:
-        await default_knowledge_service.ingest_all()
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Knowledge base initial ingestion warning: %s", e)
+    # Lightweight startup: Avoid expensive pre-indexing or remote calls
     yield
     # Shutdown logic if any
 

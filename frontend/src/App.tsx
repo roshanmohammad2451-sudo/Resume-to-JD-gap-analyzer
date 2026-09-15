@@ -65,26 +65,39 @@ export default function App() {
   const [gapError, setGapError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    const maxAttempts = 6;
+
     const checkBackendHealth = async () => {
       try {
         const response = await fetch(getApiUrl('/api/health'));
         if (response.ok) {
           const data = await response.json();
           if (data.status === 'ok') {
-            setHealthStatus('ok');
-          } else {
-            setHealthStatus('error');
+            if (isMounted) setHealthStatus('ok');
+            return;
           }
-        } else {
+        }
+        throw new Error('Backend not ready');
+      } catch (err) {
+        attempts += 1;
+        if (attempts < maxAttempts && isMounted) {
+          timerId = setTimeout(checkBackendHealth, 3000);
+        } else if (isMounted) {
+          console.warn('Backend warm-up health check timed out:', err);
           setHealthStatus('error');
         }
-      } catch (err) {
-        console.error('Health check failed:', err);
-        setHealthStatus('error');
       }
     };
 
     checkBackendHealth();
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
   }, []);
 
   const handleFileSelect = async (selectedFile: File) => {
@@ -221,6 +234,9 @@ export default function App() {
   };
 
   const handleAnalyzeGap = async () => {
+    if (isAnalyzingGap) {
+      return;
+    }
     if (!extractionResult || extractionResult.pages.length === 0) {
       setGapError('Please select and extract a candidate PDF resume first.');
       return;
@@ -326,13 +342,13 @@ export default function App() {
             {healthStatus === 'checking' && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                Connecting...
+                Waking backend...
               </span>
             )}
             {healthStatus === 'ok' && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                API Online (/api/health)
+                API Online
               </span>
             )}
             {healthStatus === 'error' && (
