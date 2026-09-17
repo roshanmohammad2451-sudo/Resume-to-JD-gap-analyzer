@@ -7,9 +7,15 @@ from typing import Type, TypeVar, Optional, Tuple, Any
 from pydantic import BaseModel, ValidationError
 
 import httpx
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError, ClientError, ServerError
+from openai import (
+    AsyncOpenAI,
+    APIError,
+    RateLimitError,
+    InternalServerError,
+    APIConnectionError,
+    APITimeoutError,
+    AuthenticationError,
+)
 
 from app.core.config import settings
 
@@ -24,12 +30,12 @@ class LLMServiceError(Exception):
 
 
 class LLMKeyMissingError(LLMServiceError):
-    """Raised when Gemini API key is missing or not configured."""
+    """Raised when Groq API key is missing or not configured."""
     pass
 
 
 class LLMAPIError(LLMServiceError):
-    """Raised when Gemini API invocation fails due to network, rate limit, or API error."""
+    """Raised when Groq API invocation fails due to network, rate limit, or API error."""
     pass
 
 
@@ -40,12 +46,12 @@ class LLMParseError(LLMServiceError):
 
 class LLMService:
     """
-    Robust service encapsulating interactions with Google Gemini API.
+    Robust service encapsulating interactions with Groq's OpenAI-compatible API.
     
     Includes:
-    - Automatic retries for transient errors (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED, 500, timeouts)
+    - Automatic retries for transient errors (429 RateLimit, 503 UNAVAILABLE, 500, 502, 504, timeouts)
     - Exponential backoff with randomized jitter
-    - Configurable primary and fallback models (e.g. gemini-2.5-flash -> gemini-2.0-flash)
+    - Configurable primary and fallback models (e.g. openai/gpt-oss-120b -> llama-3.3-70b-versatile)
     - Clean user-facing error messages without exposing raw Python tracebacks or API keys
     - Detailed, sanitized backend logging
     """
@@ -55,66 +61,80 @@ class LLMService:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         fallback_model: Optional[str] = None,
+        base_url: Optional[str] = None,
         max_retries: Optional[int] = None,
         retry_initial_delay: Optional[float] = None,
         retry_backoff_factor: Optional[float] = None,
         retry_jitter: Optional[float] = None,
     ):
-        self.api_key = api_key if api_key is not None else (settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY"))
-        self.model = model or getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
-        self.fallback_model = fallback_model if fallback_model is not None else getattr(settings, "GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
-        self.max_retries = max_retries if max_retries is not None else getattr(settings, "GEMINI_MAX_RETRIES", 4)
-        self.retry_initial_delay = retry_initial_delay if retry_initial_delay is not None else getattr(settings, "GEMINI_RETRY_INITIAL_DELAY", 1.0)
-        self.retry_backoff_factor = retry_backoff_factor if retry_backoff_factor is not None else getattr(settings, "GEMINI_RETRY_BACKOFF_FACTOR", 2.0)
-        self.retry_jitter = retry_jitter if retry_jitter is not None else getattr(settings, "GEMINI_RETRY_JITTER", 0.5)
+        self.api_key = api_key if api_key is not None else (settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY"))
+        self.model = model or getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b")
+        self.fallback_model = fallback_model if fallback_model is not None else getattr(settings, "GROQ_FALLBACK_MODEL", None)
+        self.base_url = base_url or getattr(settings, "GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+        self.max_retries = max_retries if max_retries is not None else getattr(settings, "GROQ_MAX_RETRIES", 4)
+        self.retry_initial_delay = retry_initial_delay if retry_initial_delay is not None else getattr(settings, "GROQ_RETRY_INITIAL_DELAY", 1.0)
+        self.retry_backoff_factor = retry_backoff_factor if retry_backoff_factor is not None else getattr(settings, "GROQ_RETRY_BACKOFF_FACTOR", 2.0)
+        self.retry_jitter = retry_jitter if retry_jitter is not None else getattr(settings, "GROQ_RETRY_JITTER", 0.5)
 
-    def _get_client(self) -> genai.Client:
+    def _get_client(self) -> AsyncOpenAI:
         key = self.api_key.strip() if self.api_key else ""
         if not key or key.lower() in [
+            "your_groq_api_key_here",
             "your_gemini_api_key_here",
             "your_api_key_here", 
-            "your-gemini-api-key",
+            "your-groq-api-key",
             "none"
         ] or key.startswith("your_"):
-            raise LLMKeyMissingError("Gemini API key is missing or not configured.")
-        return genai.Client(api_key=key)
+            raise LLMKeyMissingError("Groq API key is missing or not configured.")
+        return AsyncOpenAI(api_key=key, base_url=self.base_url)
 
     def _is_transient_error(self, exc: Exception) -> Tuple[bool, Optional[int], str]:
         """
         Determines whether an exception represents a transient failure eligible for retry.
         
         Eligible errors include:
-        - HTTP 503 UNAVAILABLE (model overloaded / capacity spikes)
-        - HTTP 429 RESOURCE_EXHAUSTED (rate limits)
-        - HTTP 500, 502, 504 (transient gateway/server glitches)
-        - Network connection/timeout exceptions (httpx errors)
+        - HTTP 429 RateLimitError (rate limits / quota spikes)
+        - HTTP 503, 500, 502, 504 InternalServerError (transient server issues)
+        - Network connection/timeout exceptions (APIConnectionError, APITimeoutError, httpx errors)
         """
+        if isinstance(exc, RateLimitError):
+            return True, 429, "429 RATE_LIMIT_EXCEEDED"
+
+        if isinstance(exc, InternalServerError):
+            code = getattr(exc, "status_code", 500)
+            return True, code, f"{code} SERVER_ERROR"
+
+        if isinstance(exc, (APITimeoutError, APIConnectionError)):
+            return True, None, exc.__class__.__name__
+
+        if isinstance(exc, AuthenticationError):
+            return False, 401, "401 AUTHENTICATION_ERROR"
+
         if isinstance(exc, APIError):
-            code = getattr(exc, "code", None)
-            status_text = str(getattr(exc, "status", "") or "").upper()
+            code = getattr(exc, "status_code", None)
             msg = str(getattr(exc, "message", "") or str(exc))
 
             if code in [503, 429, 500, 502, 504]:
-                return True, code, f"{code} {status_text or 'API_ERROR'}"
+                return True, code, f"{code} API_ERROR"
 
-            if "503" in msg or "UNAVAILABLE" in msg or "high demand" in msg.lower():
+            if "503" in msg or "unavailable" in msg.lower() or "overloaded" in msg.lower():
                 return True, 503, "503 UNAVAILABLE"
-            if "429" in msg or "RESOURCE_EXHAUSTED" in msg or "rate limit" in msg.lower() or "quota" in msg.lower():
-                return True, 429, "429 RESOURCE_EXHAUSTED"
-            if "500" in msg or "INTERNAL" in msg:
+            if "429" in msg or "rate limit" in msg.lower() or "quota" in msg.lower() or "tokens per minute" in msg.lower():
+                return True, 429, "429 RATE_LIMIT_EXCEEDED"
+            if "500" in msg or "internal" in msg.lower():
                 return True, 500, "500 INTERNAL_SERVER_ERROR"
 
-            return False, code, f"{code} {status_text or 'CLIENT_OR_SERVER_ERROR'}"
+            return False, code, f"{code} CLIENT_OR_SERVER_ERROR"
 
         if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError)):
             return True, None, exc.__class__.__name__
 
         # General check for transient network/connection error messages
         exc_str = str(exc).lower()
-        if "503" in exc_str or "unavailable" in exc_str or "high demand" in exc_str:
+        if "503" in exc_str or "unavailable" in exc_str or "overloaded" in exc_str:
             return True, 503, "503 UNAVAILABLE"
-        if "429" in exc_str or "resource_exhausted" in exc_str or "rate limit" in exc_str:
-            return True, 429, "429 RESOURCE_EXHAUSTED"
+        if "429" in exc_str or "rate limit" in exc_str or "quota" in exc_str:
+            return True, 429, "429 RATE_LIMIT_EXCEEDED"
         if "timed out" in exc_str or "connection refused" in exc_str or "connection reset" in exc_str:
             return True, None, "ConnectionTimeoutOrReset"
 
@@ -131,24 +151,37 @@ class LLMService:
 
     async def _execute_generate_content(
         self,
-        client: genai.Client,
+        client: AsyncOpenAI,
         model_name: str,
+        system_prompt: str,
         prompt: str,
-        config: types.GenerateContentConfig,
+        response_model: Type[T],
     ) -> Any:
-        """Invokes the Google GenAI SDK model generation."""
-        return await client.aio.models.generate_content(
+        """Invokes the Groq OpenAI-compatible Chat Completions API."""
+        schema_json = json.dumps(response_model.model_json_schema(), indent=2)
+        enforced_system_prompt = (
+            f"{system_prompt}\n\n"
+            f"You MUST output valid JSON strictly adhering to the following JSON schema:\n"
+            f"{schema_json}\n"
+            f"Return ONLY the raw JSON object without markdown formatting or code fences."
+        )
+
+        return await client.chat.completions.create(
             model=model_name,
-            contents=prompt,
-            config=config,
+            messages=[
+                {"role": "system", "content": enforced_system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.0,
         )
 
     async def _attempt_generate_with_model(
         self,
-        client: genai.Client,
+        client: AsyncOpenAI,
         model_name: str,
+        system_prompt: str,
         prompt: str,
-        config: types.GenerateContentConfig,
         response_model: Type[T],
     ) -> T:
         """
@@ -163,14 +196,19 @@ class LLMService:
                 response = await self._execute_generate_content(
                     client=client,
                     model_name=model_name,
+                    system_prompt=system_prompt,
                     prompt=prompt,
-                    config=config,
+                    response_model=response_model,
                 )
 
-                if not response or not getattr(response, "text", None):
-                    raise LLMParseError("Gemini returned an empty completion response.")
+                if not response or not getattr(response, "choices", None) or len(response.choices) == 0:
+                    raise LLMParseError("Groq returned an empty completion response.")
 
-                raw_text = response.text.strip()
+                raw_text = response.choices[0].message.content
+                if not raw_text or not raw_text.strip():
+                    raise LLMParseError("Groq returned empty text content in completion.")
+
+                raw_text = raw_text.strip()
                 if raw_text.startswith("```json"):
                     raw_text = raw_text[7:]
                 if raw_text.startswith("```"):
@@ -198,7 +236,7 @@ class LLMService:
                 if is_transient and attempt < max_attempts:
                     delay = self._calculate_backoff_delay(attempt)
                     logger.warning(
-                        "Gemini request on model '%s' attempt %d/%d encountered transient error [%s]. Retrying in %.2fs...",
+                        "Groq request on model '%s' attempt %d/%d encountered transient error [%s]. Retrying in %.2fs...",
                         model_name,
                         attempt,
                         max_attempts,
@@ -210,7 +248,7 @@ class LLMService:
 
                 if not is_transient:
                     logger.error(
-                        "Non-retryable Gemini error on model '%s' (attempt %d/%d): %s",
+                        "Non-retryable Groq error on model '%s' (attempt %d/%d): %s",
                         model_name,
                         attempt,
                         max_attempts,
@@ -219,7 +257,7 @@ class LLMService:
                     raise
 
                 logger.error(
-                    "Gemini transient failure exhausted retries for model '%s' (attempt %d/%d). Error: %s",
+                    "Groq transient failure exhausted retries for model '%s' (attempt %d/%d). Error: %s",
                     model_name,
                     attempt,
                     max_attempts,
@@ -238,25 +276,18 @@ class LLMService:
         response_model: Type[T]
     ) -> T:
         """
-        Sends prompt to Gemini API with robust retries, exponential backoff, and fallback model.
+        Sends prompt to Groq API with robust retries, exponential backoff, and fallback model.
         Returns validated Pydantic model response.
         """
         client = self._get_client()
-
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            response_mime_type="application/json",
-            response_schema=response_model,
-            temperature=0.0,
-        )
 
         # 1. Try Primary Model with automatic retries
         try:
             return await self._attempt_generate_with_model(
                 client=client,
                 model_name=self.model,
+                system_prompt=system_prompt,
                 prompt=prompt,
-                config=config,
                 response_model=response_model,
             )
         except (LLMKeyMissingError, LLMParseError):
@@ -277,8 +308,8 @@ class LLMService:
                     return await self._attempt_generate_with_model(
                         client=client,
                         model_name=self.fallback_model,
+                        system_prompt=system_prompt,
                         prompt=prompt,
-                        config=config,
                         response_model=response_model,
                     )
                 except (LLMKeyMissingError, LLMParseError):
@@ -292,7 +323,7 @@ class LLMService:
                     )
 
             logger.error(
-                "Gemini AI generation failed across configured models (primary='%s', fallback='%s').",
+                "Groq AI generation failed across configured models (primary='%s', fallback='%s').",
                 self.model,
                 self.fallback_model or "none",
             )
@@ -304,3 +335,4 @@ class LLMService:
 
 # Singleton default instance
 default_llm_service = LLMService()
+

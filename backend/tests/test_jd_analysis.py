@@ -276,7 +276,7 @@ def test_api_missing_key_status_code_jd():
             json={"text": "Senior Developer Job Description"}
         )
         assert response.status_code == 500
-        assert "Gemini API key is missing" in response.json()["detail"]
+        assert "Groq API key is missing" in response.json()["detail"]
 
 
 def test_api_gemini_api_error_status_code_jd():
@@ -286,4 +286,4 @@ def test_api_gemini_api_error_status_code_jd():
             json={"text": "Senior Developer Job Description"}
         )
         assert response.status_code == 502
-        assert "Gemini service communication error" in response.json()["detail"]
+        assert "AI service communication error" in response.json()["detail"]

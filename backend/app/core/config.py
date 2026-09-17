@@ -8,14 +8,20 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PORT: int = 8000
     
+    # Groq LLM Configuration
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    GROQ_FALLBACK_MODEL: Optional[str] = "llama-3.3-70b-versatile"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MAX_RETRIES: int = 4
+    GROQ_RETRY_INITIAL_DELAY: float = 1.0
+    GROQ_RETRY_BACKOFF_FACTOR: float = 2.0
+    GROQ_RETRY_JITTER: float = 0.5
+
+    # Embedding Configuration (Kept for Phase 6 embedding stability)
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_FALLBACK_MODEL: Optional[str] = "gemini-2.0-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
-    GEMINI_MAX_RETRIES: int = 4
-    GEMINI_RETRY_INITIAL_DELAY: float = 1.0
-    GEMINI_RETRY_BACKOFF_FACTOR: float = 2.0
-    GEMINI_RETRY_JITTER: float = 0.5
+
     DATABASE_URL: Optional[str] = None
 
     # Phase 7: RAG and Retrieval Settings

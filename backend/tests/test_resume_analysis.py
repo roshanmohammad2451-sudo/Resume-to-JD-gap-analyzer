@@ -300,7 +300,7 @@ async def test_missing_api_key_handling():
     with pytest.raises(LLMKeyMissingError) as exc_info:
         await llm_service.generate_structured_output("prompt", "sys_prompt", ResumeProfile)
     
-    assert "Gemini API key is missing" in str(exc_info.value)
+    assert "Groq API key is missing" in str(exc_info.value)
 
 
 # Test 8: API Endpoint Error Responses
@@ -311,7 +311,7 @@ def test_api_missing_key_status_code():
             json={"text": "John Doe developer resume"}
         )
         assert response.status_code == 500
-        assert "Gemini API key is missing" in response.json()["detail"]
+        assert "Groq API key is missing" in response.json()["detail"]
 
 
 def test_api_gemini_api_error_status_code():
@@ -321,4 +321,4 @@ def test_api_gemini_api_error_status_code():
             json={"text": "John Doe developer resume"}
         )
         assert response.status_code == 502
-        assert "Gemini service communication error" in response.json()["detail"]
+        assert "AI service communication error" in response.json()["detail"]

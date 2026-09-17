@@ -11,7 +11,7 @@ from app.services.llm_service import LLMService, default_llm_service, LLMService
 logger = logging.getLogger(__name__)
 
 
-class RawGeminiRecommendation(BaseModel):
+class RawRecommendation(BaseModel):
     recommendation: str = Field(
         ..., 
         description="Concise, actionable learning recommendation based ONLY on retrieved evidence"
@@ -29,11 +29,14 @@ class RawGeminiRecommendation(BaseModel):
         description="List of source_ids from retrieved chunks referenced"
     )
 
+# Backward-compatibility alias
+RawGeminiRecommendation = RawRecommendation
+
 
 class RecommendationService:
     """
     Service responsible for synthesizing grounded recommendations from retrieved knowledge chunks.
-    Constrains Gemini to retrieved evidence only, and validates every generated output
+    Constrains LLM to retrieved evidence only, and validates every generated output
     with the DeterministicGroundingValidator.
     """
 
